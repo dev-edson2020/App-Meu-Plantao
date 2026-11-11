@@ -1,0 +1,32 @@
+:root {
+  color-scheme: dark;
+  font-family: 'Segoe UI', Arial, sans-serif;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  --font-ui: 'Segoe UI', Arial, sans-serif;
+  --navy-950: #030d19;
+  --navy-900: #071a2b;
+  --navy-850: #0a233a;
+  --navy-800: #0d2c46;
+  --blue-500: #0879e8;
+  --blue-400: #149fe3;
+  --cyan-400: #42d4e9;
+  --cyan-300: #69e2f1;
+  --text-primary: #f1f6f9;
+  --text-secondary: #9fb2c0;
+  --text-tertiary: #71899a;
+  --stroke-subtle: rgba(112, 161, 190, .22);
+  --radius-sm: 10px;
+  --radius-md: 14px;
+  --radius-lg: 18px;
+  --shadow-card: 0 10px 28px rgba(0, 8, 16, .12);
+}
+
+* { box-sizing: border-box; }
+html, body { min-width: 320px; min-height: 100%; margin: 0; }
+body { background: #edf0f3; }
+button { font-family: inherit; }
+h1, h2, .brand-name { font-family: var(--font-ui); }
+::selection { color: #06151f; background: var(--cyan-300); }

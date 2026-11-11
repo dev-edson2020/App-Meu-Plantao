@@ -1,0 +1,146 @@
+<main class="app-shell" [class.auth-shell]="screen() === 'welcome'">
+  @if (screen() === 'welcome') {
+    <section class="welcome-screen screen-scroll" [class.signup-active]="authMode() === 'signup'">
+      <div class="welcome-radiograph" aria-hidden="true"></div>
+      <header class="auth-visual">
+        <div class="welcome-brand">
+          <h1>Meu Plantão</h1>
+          <div class="brand-subtitle">RADIOLOGIA</div>
+        </div>
+        <p class="welcome-description">Controle de plantões, horas e registros de ponto.</p>
+      </header>
+      <div class="auth-content">
+        @if (authMode() === 'signup') {
+          <div class="auth-heading">
+            <h2>Criar conta</h2>
+          </div>
+        }
+        <form class="auth-form" (ngSubmit)="submitAuth()">
+          @if (authMode() === 'login') {
+            <label class="auth-field"><span>E-mail</span><span class="input-shell"><svg lucideMail class="ui-icon"></svg><input name="email" type="email" placeholder="seu@email.com" autocomplete="email" [(ngModel)]="loginEmail" required/></span></label>
+            <label class="auth-field"><span>Senha</span><span class="input-shell"><svg lucideLockKeyhole class="ui-icon"></svg><input name="password" type="password" placeholder="Sua senha" autocomplete="current-password" [(ngModel)]="loginPassword" required/></span></label>
+            <button class="forgot-password" type="button" (click)="recoverPassword()">Esqueci minha senha</button>
+            <button class="button-primary auth-submit" type="submit"><svg lucideLogIn class="ui-icon"></svg>Entrar</button>
+          } @else if (signupStep() === 0) {
+            <label class="auth-field"><span>E-mail</span><span class="input-shell"><svg lucideMail class="ui-icon"></svg><input name="signupEmail" type="text" inputmode="email" placeholder="seu@email.com" autocomplete="email" [(ngModel)]="loginEmail"/></span></label>
+            <label class="auth-field"><span>Senha</span><span class="input-shell"><svg lucideLockKeyhole class="ui-icon"></svg><input name="signupPassword" type="password" placeholder="Crie uma senha" autocomplete="new-password" [(ngModel)]="loginPassword"/></span></label>
+            <label class="auth-field"><span>Confirmar senha</span><span class="input-shell"><svg lucideLockKeyhole class="ui-icon"></svg><input name="confirmPassword" type="password" placeholder="Digite a senha novamente" autocomplete="new-password" [(ngModel)]="confirmPassword"/></span></label>
+            <button class="button-primary auth-submit" type="submit">Continuar <svg lucideArrowRight class="ui-icon"></svg></button>
+          } @else {
+            <label class="auth-field"><span>Nome completo</span><span class="input-shell"><svg lucideUserRound class="ui-icon"></svg><input name="signupName" autocomplete="name" placeholder="Seu nome completo" [(ngModel)]="profileName"/></span></label>
+            <div class="auth-field-pair"><label class="auth-field"><span>Número do CRTR</span><span class="input-shell"><input name="signupCrtr" placeholder="Número" [(ngModel)]="crtrValue"/></span></label><label class="auth-field"><span>Região</span><span class="input-shell"><input name="signupRegion" placeholder="Região" [(ngModel)]="crtrRegionValue"/></span></label></div>
+            <label class="auth-field"><span>Hospital ou clínica</span><span class="input-shell"><svg lucideBuilding class="ui-icon"></svg><input name="signupWorkplace" placeholder="Local de trabalho" [(ngModel)]="workplaceValue"/></span></label>
+            <button class="signup-back" type="button" (click)="previousSignupStep()">Voltar aos dados de acesso</button>
+            <button class="button-primary auth-submit" type="submit"><svg lucideCheck class="ui-icon"></svg>Criar conta</button>
+          }
+        </form>
+        <button class="button-outline auth-alternate" type="button" (click)="toggleAuthMode()">{{ authMode() === 'login' ? 'Criar conta' : 'Já tenho conta' }}</button>
+        @if (authMode() === 'login') { <footer class="auth-footer">© 2026 Meu Plantão — Desenvolvido por Edson Meira.</footer> }
+        @if (notice()) { <p class="auth-notice" role="status">{{ notice() }}</p> }
+      </div>
+    </section>
+  } @else {
+    <app-header
+      [home]="screen() === 'home'"
+      [title]="screen() === 'register' ? 'Registrar Ponto' : screen() === 'records' ? 'Meus Registros' : screen() === 'reports' ? 'Relatórios' : 'Meu Cadastro'"
+      (backClick)="goBack()"
+      (exitClick)="requestExit()"
+    />
+
+    @if (screen() === 'home') {
+      <section class="home-screen screen-scroll">
+        <article class="user-summary">
+          <span class="user-avatar"><svg lucideUserRound class="ui-icon"></svg></span>
+          <div><small>PERFIL</small><strong>{{ profileName || 'Seu nome' }}</strong><span>{{ crtrDisplay() }}</span></div>
+          <button class="profile-shortcut" aria-label="Abrir meu cadastro" (click)="go('profile')"><svg lucideArrowRight class="ui-icon"></svg></button>
+        </article>
+        <div class="home-stats">
+          <article class="small-stat"><span class="stat-icon"><svg lucideCalendarDays class="ui-icon"></svg></span><div><span>Plantões no mês</span><strong>0</strong></div></article>
+          <article class="small-stat stat-hours"><span class="stat-icon"><svg lucideClock3 class="ui-icon"></svg></span><div><span>Total de horas</span><strong>{{ reportHours() }}</strong></div></article>
+        </div>
+        <div class="section-heading"><span>Acesso rápido</span><small>Suas ferramentas</small></div>
+        <div class="action-grid">
+          <button class="action-card action-register" (click)="go('register')"><span class="action-icon"><svg lucideCamera class="ui-icon"></svg></span><span>Registrar Ponto</span><svg lucideArrowRight class="action-arrow"></svg></button>
+          <button class="action-card" (click)="go('records')"><span class="action-icon"><svg lucideListChecks class="ui-icon"></svg></span><span>Meus Registros</span><svg lucideArrowRight class="action-arrow"></svg></button>
+          <button class="action-card" (click)="go('reports')"><span class="action-icon"><svg lucideChartNoAxesColumnIncreasing class="ui-icon"></svg></span><span>Relatórios</span><svg lucideArrowRight class="action-arrow"></svg></button>
+          <button class="action-card" (click)="go('profile')"><span class="action-icon"><svg lucideUserRound class="ui-icon"></svg></span><span>Meu Cadastro</span><svg lucideArrowRight class="action-arrow"></svg></button>
+        </div>
+      </section>
+    }
+
+    @if (screen() === 'register') {
+      <section class="form-screen screen-scroll">
+        <div class="register-intro"><span class="register-indicator"><i></i> NOVO REGISTRO</span><p>Adicione o horário e a foto do relógio de ponto.</p></div>
+        <div class="record-toggle"><button [class.selected]="recordKind() === 'Entrada'" (click)="recordKind.set('Entrada')"><svg lucideArrowRightToLine class="ui-icon"></svg>Entrada</button><button [class.selected]="recordKind() === 'Saída'" (click)="recordKind.set('Saída')"><svg lucideArrowLeftToLine class="ui-icon"></svg>Saída</button></div>
+        <label class="camera-frame" for="clock-camera"><span class="scan-corner corner-a"></span><span class="scan-corner corner-b"></span><span class="scan-corner corner-c"></span><span class="scan-corner corner-d"></span>@if (photoPreviewUrl) { <img class="photo-preview" [src]="photoPreviewUrl" alt="Prévia da fotografia do relógio de ponto"/> } @else { <span class="camera-placeholder"><span class="camera-symbol"><svg lucideCamera class="ui-icon"></svg></span><strong>Fotografar relógio de ponto</strong><small>Toque para abrir a câmera ou escolha uma foto</small></span> }<input #cameraPhoto id="clock-camera" type="file" accept="image/*" capture="environment" (change)="handlePhoto($event)"/><input #galleryPhoto id="clock-gallery" type="file" accept="image/*" (change)="handlePhoto($event)"/></label>
+        <div class="capture-tools"><button class="capture-choice camera-choice" type="button" (click)="cameraPhoto.click()"><svg lucideCamera class="ui-icon"></svg>@if (photoPreviewUrl) { Tirar outra foto } @else { Fotografar agora }</button><label class="capture-choice gallery-choice" for="clock-gallery"><svg lucideImage class="ui-icon"></svg>@if (photoPreviewUrl) { Escolher outra foto } @else { Escolher da galeria }</label>@if (photoPreviewUrl) { <button class="capture-choice remove-photo" type="button" (click)="clearPhoto(cameraPhoto,galleryPhoto)"><svg lucideX class="ui-icon"></svg>Remover foto</button> }</div>
+        <div class="record-fields"><label class="detail-line"><span><svg lucideCalendarDays class="ui-icon"></svg>Data</span><input aria-label="Data do registro" name="date" type="date" [(ngModel)]="dateValue"/></label><label class="detail-line time-line"><span><svg lucideClock3 class="ui-icon"></svg>Horário</span><input aria-label="Horário do registro" name="time" type="time" [(ngModel)]="timeValue"/></label></div>
+        <label class="text-area-wrap"><span><svg lucidePencil class="ui-icon"></svg>Justificativa <small>(opcional)</small></span><textarea name="reason" placeholder="Descreva o motivo, se necessário" [(ngModel)]="reasonValue"></textarea></label>
+        <button class="button-primary save-button" (click)="saveRecord()"><svg lucideCheck class="ui-icon"></svg>Salvar Registro</button>
+      </section>
+    }
+
+    @if (screen() === 'records') {
+      <section class="records-screen screen-scroll">
+        <div class="month-select"><span class="month-icon"><svg lucideCalendarDays class="ui-icon"></svg></span><span class="month-label">{{ monthLabel() }}</span><button aria-label="Mês anterior" (click)="changeMonth(-1)"><svg lucideChevronLeft class="ui-icon"></svg></button><button aria-label="Próximo mês" (click)="changeMonth(1)"><svg lucideChevronRight class="ui-icon"></svg></button></div>
+        @if (visibleRecords().length === 0) {
+          <div class="empty-state"><span class="empty-clock"><svg lucideClock3 class="ui-icon"></svg></span><strong>Nenhum registro neste mês</strong><p>Seus registros de entrada e saída aparecerão aqui.</p><button class="button-outline" (click)="go('register')">Registrar ponto</button></div>
+        } @else {
+          <div class="record-list">
+            @for (record of visibleRecords(); track record.id) {
+              <article class="record-row"><span class="record-day"><strong>{{ record.occurredAt | date:'dd':'America/Sao_Paulo' }}</strong><small>{{ record.occurredAt | date:'EEE':'America/Sao_Paulo' }}</small></span><span class="record-info"><strong>{{ formatTime(record.occurredAt) }} <i></i> {{ record.kind }}</strong><small>{{ formatDate(record.occurredAt) }}@if (record.reason) { <span> · {{ record.reason }}</span> }</small>@if (record.photoName) { <small class="photo-tag"><svg lucideImage class="ui-icon"></svg>{{ record.photoName }}</small> }</span><span class="record-check"><svg lucideCheck class="ui-icon"></svg></span><svg lucideChevronRight class="record-chevron"></svg></article>
+            }
+          </div>
+          <article class="total-card"><span class="total-icon"><svg lucideClock3 class="ui-icon"></svg></span><div><span>Total no mês</span><strong>{{ reportHours() }}</strong></div></article>
+        }
+      </section>
+    }
+
+    @if (screen() === 'reports') {
+      <section class="reports-screen screen-scroll">
+        <div class="month-select"><span class="month-icon"><svg lucideCalendarDays class="ui-icon"></svg></span><span class="month-label">{{ monthLabel() }}</span><button aria-label="Mês anterior" (click)="changeMonth(-1)"><svg lucideChevronLeft class="ui-icon"></svg></button><button aria-label="Próximo mês" (click)="changeMonth(1)"><svg lucideChevronRight class="ui-icon"></svg></button></div>
+        <article class="report-card"><div class="report-title"><span class="report-document"><svg lucideFileText class="ui-icon"></svg></span><div><small>RESUMO DO PERÍODO</small><h2>Relatório de Plantões</h2><strong>{{ profileName || 'Seu nome' }}</strong><span>{{ crtrDisplay() }}</span></div></div><div class="report-divider"></div><div class="report-stat"><span class="report-stat-icon"><svg lucideCalendarDays class="ui-icon"></svg></span><span>Registros no período<strong>{{ recordCount() }}</strong></span></div><div class="report-stat"><span class="report-stat-icon"><svg lucideClock3 class="ui-icon"></svg></span><span>Total de horas<strong>{{ reportHours() }}</strong></span></div><small class="report-disclaimer">Os relatórios ficam disponíveis após o primeiro registro no período.</small></article>
+        <div class="report-actions"><button class="button-primary report-action" [disabled]="!visibleRecords().length" (click)="printReport()"><svg lucidePrinter class="ui-icon"></svg><span>Imprimir Relatório<small>Resumo</small></span></button><button class="button-outline report-action" [disabled]="!visibleRecords().length" (click)="printReport()"><svg lucidePrinter class="ui-icon"></svg><span>Imprimir com Fotografias<small>Relatório Completo</small></span></button></div>
+        @if (!visibleRecords().length) { <p class="report-empty-note">A impressão fica disponível quando houver registros no mês selecionado.</p> }
+      </section>
+    }
+
+    @if (screen() === 'profile') {
+      <section class="profile-screen screen-scroll">
+        <div class="profile-intro"><span class="profile-avatar"><svg lucideUserRound class="ui-icon"></svg></span><p>Seus dados profissionais</p></div>
+        <div class="profile-fields">
+          <label class="profile-field"><span><svg lucideUserRound class="ui-icon"></svg>Nome completo</span><input name="profileName" autocomplete="name" placeholder="Seu nome completo" [(ngModel)]="profileName"/></label>
+          <label class="profile-field"><span><svg lucideFileText class="ui-icon"></svg>Número do CRTR</span><input name="crtr" placeholder="Número de registro" [(ngModel)]="crtrValue"/></label>
+          <label class="profile-field"><span><svg lucideBuilding class="ui-icon"></svg>Local de trabalho</span><input name="workplace" placeholder="Nome do hospital ou clínica" [(ngModel)]="workplaceValue"/></label>
+        </div>
+        <button class="button-primary profile-save" (click)="saveProfile()"><svg lucideCheck class="ui-icon"></svg>Salvar Alterações</button>
+      </section>
+    }
+
+
+    @if (notice()) { <div class="toast" role="status">{{ notice() }}</div> }
+
+    @if (screen() !== 'register') {
+      <nav class="bottom-nav" aria-label="Navegação inferior">
+        <button [class.active]="screen() === 'home'" (click)="go('home')"><svg lucideHouse class="ui-icon"></svg><span>Início</span></button>
+        <button [class.active]="screen() === 'records'" (click)="go('records')"><svg lucideClock3 class="ui-icon"></svg><span>Registros</span></button>
+        <button [class.active]="screen() === 'reports'" (click)="go('reports')"><svg lucideChartNoAxesColumnIncreasing class="ui-icon"></svg><span>Relatórios</span></button>
+        <button [class.active]="screen() === 'profile'" (click)="go('profile')"><svg lucideUserRound class="ui-icon"></svg><span>Perfil</span></button>
+      </nav>
+    }
+    @if (showExitConfirmation()) {
+      <div class="exit-confirmation">
+        <section class="exit-dialog" role="alertdialog" aria-modal="true" aria-labelledby="exit-dialog-title" aria-describedby="exit-dialog-message">
+          <span class="exit-dialog-icon"><svg lucideLogOut class="ui-icon"></svg></span>
+          <h2 id="exit-dialog-title">Encerrar sessão?</h2>
+          <p id="exit-dialog-message">Seus registros e fotos serão mantidos.</p>
+          <div class="exit-dialog-actions">
+            <button class="button-outline" type="button" (click)="cancelExit()">Cancelar</button>
+            <button class="button-primary" type="button" (click)="confirmExit()">Sair</button>
+          </div>
+        </section>
+      </div>
+    }
+    <router-outlet />
+  }
+</main>
