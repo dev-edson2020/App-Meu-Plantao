@@ -1,16 +1,40 @@
+
 <header class="screen-header" [class.home-header]="home">
   <div class="header-photo" aria-hidden="true"></div>
+
   @if (home) {
     <span class="header-spacer" aria-hidden="true"></span>
-    <div class="screen-heading brand-heading"><h1>Meu Plantão</h1><span>RADIOLOGIA</span></div>
+
+    <div class="screen-heading brand-heading">
+      <h1>Meu Plantão</h1>
+      <span>RADIOLOGIA</span>
+    </div>
   } @else {
-    <button class="back-button" type="button" aria-label="Voltar ao início" (click)="backClick.emit()">
+    <button
+      class="back-button"
+      type="button"
+      aria-label="Voltar"
+      (click)="backClick.emit()"
+    >
       <svg lucideArrowLeft class="ui-icon"></svg>
     </button>
+
+    <div class="brand-lockup">
+      <strong>Meu Plantão</strong>
+      <span>RADIOLOGIA</span>
+    </div>
+
     <h1 class="page-title">{{ title }}</h1>
-    <div class="brand-lockup"><strong>Meu Plantão</strong><span>RADIOLOGIA</span></div>
   }
-  <button class="exit-action" type="button" aria-label="Sair do aplicativo" title="Sair do aplicativo" (click)="exitClick.emit()">
-    <svg lucideLogOut class="ui-icon"></svg><span>Sair</span>
+
+  <button
+    class="exit-action"
+    type="button"
+    aria-label="Sair do aplicativo"
+    title="Sair do aplicativo"
+    (click)="exitClick.emit()"
+  >
+    <svg lucideLogOut class="ui-icon"></svg>
+    <span>Sair</span>
   </button>
 </header>

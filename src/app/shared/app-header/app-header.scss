@@ -1,122 +1,88 @@
+
 :host {
   position: relative;
   z-index: 2;
   display: block;
-  flex: 0 0 124px;
-  min-height: 124px;
+  flex: 0 0 180px;
+  min-height: 180px;
+  width: 100%;
 }
 
+/* Cabeçalho padrão */
 .screen-header {
   position: relative;
-  display: grid;
-  grid-template-columns: 44px minmax(0, 1fr) auto;
-  grid-template-rows: 62px 1fr;
-  align-items: center;
-  gap: 0 8px;
+  display: block;
   width: 100%;
-  height: 124px;
+  height: 180px;
   overflow: hidden;
-  padding: 0 13px 8px;
-  border-bottom: 1px solid rgba(135, 185, 207, .13);
+  padding: 0;
   background: #071a2b;
+  border: 0;
 }
 
-.header-photo,
+/* Fotografia original do Login */
+.header-photo {
+  position: absolute;
+  z-index: 0;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 132px;
+  background-image: url('/images/radiology-reading-room.jpg');
+  background-position: 62% 43%;
+  background-size: cover;
+  background-repeat: no-repeat;
+}
+
 .screen-header::after {
   position: absolute;
-  inset: 0;
-  pointer-events: none;
-}
-
-.header-photo {
-  z-index: 0;
-  background: url('/images/radiology-reading-room.jpg') 62% 43% / cover no-repeat;
-  opacity: .72;
-}
-
-.screen-header::after {
   z-index: 1;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 132px;
   content: '';
-  background: linear-gradient(90deg, rgba(4, 17, 30, .68), rgba(4, 17, 30, .22) 54%, rgba(4, 17, 30, .66)), linear-gradient(180deg, rgba(4, 17, 30, .16) 0%, rgba(5, 20, 33, .32) 48%, #071a2b 100%);
+  pointer-events: none;
+  background:
+    linear-gradient(
+      90deg,
+      rgba(4, 17, 30, .12),
+      rgba(4, 17, 30, .02) 54%,
+      rgba(4, 17, 30, .12)
+    ),
+    linear-gradient(
+      180deg,
+      rgba(4, 17, 30, .08),
+      rgba(5, 20, 33, .12)
+    );
 }
 
+/* Botões sobre a fotografia */
 .back-button,
 .exit-action {
-  position: relative;
-  z-index: 2;
+  position: absolute;
+  z-index: 4;
+  top: 13px;
   display: flex;
   align-items: center;
   justify-content: center;
   height: 42px;
   padding: 0;
-  border: 1px solid rgba(120, 176, 203, .28);
+  border: 1px solid rgba(120, 176, 203, .38);
   border-radius: 13px;
-  background: rgba(7, 27, 44, .68);
+  background: rgba(7, 27, 44, .76);
   color: #e5f2f7;
   cursor: pointer;
   backdrop-filter: blur(8px);
 }
 
-.back-button { grid-column: 1; grid-row: 1; width: 42px; }
-
-.page-title {
-  position: relative;
-  z-index: 2;
-  grid-column: 2;
-  grid-row: 1;
-  justify-self: center;
-  max-width: 100%;
-  overflow: hidden;
-  margin: 0;
-  color: #f3f8fb;
-  font-family: var(--font-ui);
-  font-size: 17px;
-  font-weight: 650;
-  letter-spacing: -.35px;
-  line-height: 1.2;
-  text-align: center;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.brand-lockup {
-  position: relative;
-  z-index: 2;
-  grid-column: 1 / 4;
-  grid-row: 2;
-  justify-self: center;
-  display: grid;
-  gap: 3px;
-  padding: 0 4px 2px;
-  color: #f6fafc;
-  text-align: center;
-  text-shadow: 0 2px 12px rgba(0, 0, 0, .72);
-}
-
-.brand-lockup strong,
-.brand-heading h1 {
-  margin: 0;
-  font-family: var(--font-ui);
-  font-size: 16px;
-  font-weight: 700;
-  letter-spacing: -.45px;
-  line-height: 1;
-}
-
-.brand-lockup span,
-.brand-heading span {
-  color: #91e8f3;
-  font-family: var(--font-ui);
-  font-size: 8px;
-  font-weight: 650;
-  letter-spacing: 2.8px;
-  line-height: 1;
+.back-button {
+  left: 13px;
+  width: 42px;
 }
 
 .exit-action {
-  grid-column: 3;
-  grid-row: 1;
-  justify-self: end;
+  right: 13px;
   min-width: 56px;
   gap: 5px;
   padding: 0 9px;
@@ -125,29 +91,217 @@
   font-weight: 600;
 }
 
-.ui-icon { display: block; width: 19px; height: 19px; flex: 0 0 auto; }
-.exit-action .ui-icon { width: 16px; height: 16px; }
-.header-spacer { position: relative; z-index: 2; grid-column: 1; grid-row: 1; width: 42px; }
-
-.home-header {
-  grid-template-rows: 1fr;
-  height: 124px;
-  padding-bottom: 0;
+.ui-icon {
+  display: block;
+  width: 19px;
+  height: 19px;
+  flex: 0 0 auto;
 }
 
-.home-header .header-photo { background-position: 62% 39%; }
-.home-header .screen-heading { position: relative; z-index: 2; grid-column: 2; grid-row: 1; justify-self: center; display: grid; gap: 5px; text-align: center; text-shadow: 0 2px 12px rgba(0, 0, 0, .8); }
-.home-header .screen-heading h1 { color: #f6fafc; font-size: 19px; font-weight: 700; letter-spacing: -.5px; line-height: 1; }
-.home-header .screen-heading span { color: #91e8f3; font-size: 8px; font-weight: 650; letter-spacing: 2.8px; line-height: 1; }
-.home-header .exit-action { grid-row: 1; }
+.exit-action .ui-icon {
+  width: 16px;
+  height: 16px;
+}
 
-button:focus-visible { outline: 2px solid var(--cyan-300); outline-offset: 3px; }
+/* Marca dentro da fotografia */
+.brand-lockup {
+  position: absolute;
+  z-index: 3;
+  left: 24px;
+  bottom: 67px;
+  display: grid;
+  gap: 5px;
+  padding: 0;
+  color: #f6fafc;
+  text-align: left;
+  text-shadow: 0 2px 12px rgba(0, 0, 0, .75);
+}
 
+.brand-lockup strong,
+.brand-heading h1 {
+  margin: 0;
+  font-family: var(--font-ui);
+  font-size: 25px;
+  font-weight: 700;
+  letter-spacing: -.65px;
+  line-height: 1;
+}
+
+.brand-lockup span,
+.brand-heading span {
+  color: #91e8f3;
+  font-family: var(--font-ui);
+  font-size: 9px;
+  font-weight: 650;
+  letter-spacing: 3.2px;
+  line-height: 1;
+}
+
+/* Título centralizado abaixo da fotografia */
+.page-title {
+  position: absolute;
+  z-index: 3;
+  top: 132px;
+  left: 0;
+  right: 0;
+  width: 100%;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0;
+  padding: 0 12px;
+
+  color: #d5e2eb;
+  background: linear-gradient(
+    180deg,
+    #091e30 0%,
+    #071a2b 100%
+  );
+
+  border-bottom: 1px solid rgba(135, 185, 207, .10);
+
+  font-family: var(--font-ui);
+  font-size: 17px;
+  font-weight: 600;
+  letter-spacing: .1px;
+  line-height: 1.2;
+  text-align: center;
+}
+
+/* Dashboard */
+.header-spacer {
+  display: none;
+}
+
+.home-header {
+  height: 132px;
+}
+
+/* Remove o espaço reservado ao título no Dashboard */
+:host:has(.home-header) {
+  flex: 0 0 132px;
+  min-height: 132px;
+}
+
+.home-header .header-photo,
+.home-header::after {
+  height: 132px;
+}
+
+.home-header .header-photo {
+  background-position: 62% 39%;
+}
+
+.home-header .screen-heading {
+  position: absolute;
+  z-index: 3;
+  left: 24px;
+  bottom: 15px;
+  display: grid;
+  gap: 5px;
+  text-align: left;
+  text-shadow: 0 2px 12px rgba(0, 0, 0, .75);
+}
+
+.home-header .screen-heading h1 {
+  margin: 0;
+  color: #f6fafc;
+  font-family: var(--font-ui);
+  font-size: 25px;
+  font-weight: 700;
+  letter-spacing: -.65px;
+  line-height: 1;
+}
+
+.home-header .screen-heading span {
+  color: #91e8f3;
+  font-size: 9px;
+  font-weight: 650;
+  letter-spacing: 3.2px;
+  line-height: 1;
+}
+
+.home-header .exit-action {
+  top: 13px;
+}
+
+/* Acessibilidade */
+button:focus-visible {
+  outline: 2px solid var(--cyan-300);
+  outline-offset: 3px;
+}
+
+/* Celulares menores */
 @media (max-width: 370px) {
-  :host { flex-basis: 116px; min-height: 116px; }
-  .screen-header { height: 116px; grid-template-rows: 58px 1fr; gap: 0 4px; padding-right: 10px; padding-left: 10px; }
-  .home-header { height: 116px; grid-template-rows: 1fr; }
-  .page-title { font-size: 15px; }
-  .brand-lockup strong { font-size: 15px; }
-  .exit-action { min-width: 52px; padding: 0 7px; }
+  :host {
+    flex-basis: 170px;
+    min-height: 170px;
+  }
+
+  .screen-header {
+    height: 170px;
+  }
+
+  .header-photo,
+  .screen-header::after {
+    height: 116px;
+  }
+
+  .brand-lockup {
+    left: 18px;
+    bottom: 61px;
+  }
+
+  .brand-lockup strong {
+    font-size: 22px;
+  }
+
+  .brand-lockup span {
+    font-size: 8px;
+  }
+
+  .page-title {
+    top: 116px;
+    height: 54px;
+    font-size: 16px;
+  }
+
+  /* Dashboard em telas menores */
+  :host:has(.home-header) {
+    flex: 0 0 116px;
+    min-height: 116px;
+  }
+
+  .home-header {
+    height: 116px;
+  }
+
+  .home-header .header-photo,
+  .home-header::after {
+    height: 116px;
+  }
+
+  .home-header .screen-heading {
+    left: 18px;
+    bottom: 13px;
+  }
+
+  .home-header .screen-heading h1 {
+    font-size: 22px;
+  }
+
+  .home-header .screen-heading span {
+    font-size: 8px;
+  }
+
+  .back-button {
+    left: 10px;
+  }
+
+  .exit-action {
+    right: 10px;
+    min-width: 52px;
+    padding: 0 7px;
+  }
 }
