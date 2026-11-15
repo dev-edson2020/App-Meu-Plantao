@@ -3,6 +3,7 @@ import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { NavigationEnd, Router, RouterOutlet } from '@angular/router';
 import { filter } from 'rxjs';
+import { supabase, isSupabaseConfigured } from './core/supabase-client';
 import { AppHeaderComponent } from './shared/app-header/app-header';
 import {
   LucideArrowRight,
@@ -99,7 +100,10 @@ export class App {
   protected confirmPassword = '';
   protected readonly selectedMonth = signal(this.now.getMonth());
   protected readonly selectedYear = signal(this.now.getFullYear());
-  protected readonly crtrDisplay = computed(() => [this.crtrValue, this.crtrRegionValue].filter(Boolean).join(' · ') || 'CRTR não informado');
+  protected readonly crtrDisplay = computed(
+    () =>
+      [this.crtrValue, this.crtrRegionValue].filter(Boolean).join(' · ') || 'CRTR não informado',
+  );
 
   constructor(private readonly router: Router) {
     this.screen.set(this.screenFromUrl(this.router.url));
@@ -115,21 +119,31 @@ export class App {
   }
 
   protected readonly monthLabel = computed(() =>
-    new Intl.DateTimeFormat('pt-BR', { month: 'long', year: 'numeric', timeZone: 'America/Sao_Paulo' })
+    new Intl.DateTimeFormat('pt-BR', {
+      month: 'long',
+      year: 'numeric',
+      timeZone: 'America/Sao_Paulo',
+    })
       .format(new Date(this.selectedYear(), this.selectedMonth(), 1))
       .replace(/^./, (letter) => letter.toLocaleUpperCase('pt-BR')),
   );
 
   protected readonly visibleRecords = computed(() =>
     this.records()
-      .filter((record) => record.occurredAt.getMonth() === this.selectedMonth() && record.occurredAt.getFullYear() === this.selectedYear())
+      .filter(
+        (record) =>
+          record.occurredAt.getMonth() === this.selectedMonth() &&
+          record.occurredAt.getFullYear() === this.selectedYear(),
+      )
       .sort((a, b) => b.occurredAt.getTime() - a.occurredAt.getTime()),
   );
 
   protected readonly recordCount = computed(() => this.visibleRecords().length);
 
   protected readonly reportHours = computed(() => {
-    const events = this.visibleRecords().slice().sort((a, b) => a.occurredAt.getTime() - b.occurredAt.getTime());
+    const events = this.visibleRecords()
+      .slice()
+      .sort((a, b) => a.occurredAt.getTime() - b.occurredAt.getTime());
     const intervals: Array<[number, number]> = [];
     let open: number | null = null;
     for (const event of events) {
@@ -253,11 +267,19 @@ export class App {
     const occurredAt = new Date(`${this.dateValue}T${this.timeValue}:00`);
     this.records.update((items) => [
       ...items,
-      { id: Date.now(), kind: this.recordKind(), occurredAt, reason: this.reasonValue.trim(), photoName: this.photoName },
+      {
+        id: Date.now(),
+        kind: this.recordKind(),
+        occurredAt,
+        reason: this.reasonValue.trim(),
+        photoName: this.photoName,
+      },
     ]);
     this.selectedMonth.set(occurredAt.getMonth());
     this.selectedYear.set(occurredAt.getFullYear());
-    this.notice.set('Registro adicionado nesta sessão. A sincronização com sua conta será conectada na próxima etapa.');
+    this.notice.set(
+      'Registro adicionado nesta sessão. A sincronização com sua conta será conectada na próxima etapa.',
+    );
     this.reasonValue = '';
     this.photoName = '';
     if (this.photoPreviewUrl) URL.revokeObjectURL(this.photoPreviewUrl);
@@ -265,31 +287,126 @@ export class App {
   }
 
   protected saveProfile(): void {
-    this.notice.set('Alterações mantidas nesta sessão. A sincronização com sua conta será conectada na próxima etapa.');
+    this.notice.set(
+      'Alterações mantidas nesta sessão. A sincronização com sua conta será conectada na próxima etapa.',
+    );
   }
 
-  protected submitAuth(): void {
+  protected async submitAuth(): Promise<void> {
+    if (!supabase) {
+      this.notice.set('Não foi possível conectar ao servidor.');
+      return;
+    }
+
+    // CADASTRO
     if (this.authMode() === 'signup') {
+      // Primeira etapa: dados de acesso
       if (this.signupStep() === 0) {
+        if (!this.loginEmail.trim() || !this.loginPassword || !this.confirmPassword) {
+          this.notice.set('Preencha todos os campos.');
+          return;
+        }
+
+        if (this.loginPassword.length < 6) {
+          this.notice.set('A senha deve ter pelo menos 6 caracteres.');
+          return;
+        }
+
+        if (this.loginPassword !== this.confirmPassword) {
+          this.notice.set('As senhas não são iguais.');
+          return;
+        }
+
+        this.notice.set('');
         this.signupStep.set(1);
         return;
       }
-      this.notice.set('Cadastro ainda não conectado. Nenhuma conta ou dado foi enviado.');
+
+      // Segunda etapa: dados profissionais
+      if (!this.profileName.trim() || !this.crtrValue.trim() || !this.workplaceValue.trim()) {
+        this.notice.set('Preencha todos os dados profissionais.');
+        return;
+      }
+
+      this.notice.set('Criando sua conta...');
+
+      try {
+        const { data, error } = await supabase.auth.signUp({
+          email: this.loginEmail.trim(),
+          password: this.loginPassword,
+        });
+
+        if (error) {
+          this.notice.set(error.message);
+          return;
+        }
+
+        if (!data.user || !data.session) {
+          this.notice.set('Conta criada, mas não foi possível iniciar a sessão.');
+          return;
+        }
+
+        const { error: profileError } = await supabase.from('perfis').insert({
+          id: data.user.id,
+          nome_completo: this.profileName.trim(),
+          numero_crtr: this.crtrValue.trim(),
+          local_trabalho: this.workplaceValue.trim(),
+        });
+
+        if (profileError) {
+          this.notice.set(
+            'Conta criada, mas houve um erro ao salvar o perfil: ' + profileError.message,
+          );
+          return;
+        }
+
+        this.notice.set('');
+        this.go('home');
+      } catch {
+        this.notice.set('Erro ao criar a conta. Tente novamente.');
+      }
+
       return;
     }
-    this.go('home');
+
+    // LOGIN
+    if (!this.loginEmail.trim() || !this.loginPassword) {
+      this.notice.set('Informe seu e-mail e sua senha.');
+      return;
+    }
+
+    this.notice.set('Entrando...');
+
+    try {
+      const { error } = await supabase.auth.signInWithPassword({
+        email: this.loginEmail.trim(),
+        password: this.loginPassword,
+      });
+
+      if (error) {
+        this.notice.set('E-mail ou senha inválidos.');
+        return;
+      }
+
+      this.notice.set('');
+      this.go('home');
+    } catch {
+      this.notice.set('Erro ao conectar. Tente novamente.');
+    }
   }
 
   protected toggleAuthMode(): void {
-    this.authMode.update((mode) => mode === 'login' ? 'signup' : 'login');
+    this.authMode.update((mode) => (mode === 'login' ? 'signup' : 'login'));
     this.signupStep.set(0);
     this.notice.set('');
   }
 
   protected recoverPassword(): void {
-    this.notice.set(this.loginEmail.trim()
-      ? 'A recuperação de senha será habilitada quando a autenticação for conectada.'
-      : 'Informe seu e-mail acima para solicitar a recuperação de senha.');
+    this.notice.set(
+      this.loginEmail.trim()
+        ? 'A recuperação de senha será habilitada quando a autenticação for conectada.'
+        : 'Informe seu e-mail acima para solicitar a recuperação de senha.',
+    );
   }
 
   protected previousSignupStep(): void {
@@ -302,17 +419,30 @@ export class App {
   }
 
   protected formatDate(date: Date): string {
-    return new Intl.DateTimeFormat('pt-BR', { day: '2-digit', month: 'short', timeZone: 'America/Sao_Paulo' })
-      .format(date).replace('.', '');
+    return new Intl.DateTimeFormat('pt-BR', {
+      day: '2-digit',
+      month: 'short',
+      timeZone: 'America/Sao_Paulo',
+    })
+      .format(date)
+      .replace('.', '');
   }
 
   protected formatTime(date: Date): string {
-    return new Intl.DateTimeFormat('pt-BR', { hour: '2-digit', minute: '2-digit', hourCycle: 'h23', timeZone: 'America/Sao_Paulo' }).format(date);
+    return new Intl.DateTimeFormat('pt-BR', {
+      hour: '2-digit',
+      minute: '2-digit',
+      hourCycle: 'h23',
+      timeZone: 'America/Sao_Paulo',
+    }).format(date);
   }
 
   private inputDate(date: Date): string {
     const parts = new Intl.DateTimeFormat('en-CA', {
-      timeZone: 'America/Sao_Paulo', year: 'numeric', month: '2-digit', day: '2-digit',
+      timeZone: 'America/Sao_Paulo',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
     }).formatToParts(date);
     const part = (type: string) => parts.find((item) => item.type === type)?.value ?? '';
     return `${part('year')}-${part('month')}-${part('day')}`;
@@ -320,7 +450,10 @@ export class App {
 
   private inputTime(date: Date): string {
     return new Intl.DateTimeFormat('pt-BR', {
-      timeZone: 'America/Sao_Paulo', hour: '2-digit', minute: '2-digit', hourCycle: 'h23',
+      timeZone: 'America/Sao_Paulo',
+      hour: '2-digit',
+      minute: '2-digit',
+      hourCycle: 'h23',
     }).format(date);
   }
 }

@@ -1,6 +1,5 @@
-// Configuração pública de runtime. Preencha apenas com a URL do projeto Supabase
-// e a chave anon/publishable. Nunca coloque a chave service_role aqui.
+// Configuração pública do Supabase
 window.__MEU_PLANTAO_CONFIG__ = {
-  supabaseUrl: '',
-  supabaseAnonKey: '',
+  supabaseUrl: 'https://xqdwfyhnvudqgnpxauop.supabase.co',
+  supabaseAnonKey: 'sb_publishable_-J9VOc_C4Je86dRy7FCTtg_HFlq04Pf',
 };
