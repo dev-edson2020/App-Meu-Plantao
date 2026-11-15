@@ -81,6 +81,9 @@ export class App {
   protected readonly showExitConfirmation = signal(false);
   private readonly previousScreen = signal<Screen>('welcome');
   protected readonly authMode = signal<'login' | 'signup'>('login');
+  protected readonly isPasswordRecovery = signal(false);
+  protected newPassword = '';
+  protected confirmNewPassword = '';
   protected readonly signupStep = signal(0);
   protected readonly recordKind = signal<RecordKind>('Entrada');
   protected readonly records = signal<TimeRecord[]>([]);
@@ -107,10 +110,20 @@ export class App {
 
   constructor(private readonly router: Router) {
     this.screen.set(this.screenFromUrl(this.router.url));
+
+    supabase?.auth.onAuthStateChange((event) => {
+      if (event === 'PASSWORD_RECOVERY') {
+        this.isPasswordRecovery.set(true);
+        this.screen.set('welcome');
+        this.notice.set('Digite sua nova senha.');
+      }
+    });
+
     this.router.events
       .pipe(filter((event): event is NavigationEnd => event instanceof NavigationEnd))
       .subscribe((event) => {
         const nextScreen = this.screenFromUrl(event.urlAfterRedirects);
+
         if (this.screen() !== nextScreen) {
           this.previousScreen.set(this.screen());
           this.screen.set(nextScreen);
@@ -298,9 +311,53 @@ export class App {
       return;
     }
 
+    // RECUPERAÇÃO DE SENHA
+    if (this.isPasswordRecovery()) {
+      if (!this.newPassword || !this.confirmNewPassword) {
+        this.notice.set('Preencha os dois campos de senha.');
+        return;
+      }
+
+      if (this.newPassword.length < 6) {
+        this.notice.set('A senha deve ter pelo menos 6 caracteres.');
+        return;
+      }
+
+      if (this.newPassword !== this.confirmNewPassword) {
+        this.notice.set('As senhas não são iguais.');
+        return;
+      }
+
+      this.notice.set('Atualizando sua senha...');
+
+      try {
+        const { error } = await supabase.auth.updateUser({
+          password: this.newPassword,
+        });
+
+        if (error) {
+          this.notice.set('Não foi possível atualizar a senha. Tente novamente.');
+          return;
+        }
+
+        await supabase.auth.signOut({ scope: 'local' });
+
+        this.isPasswordRecovery.set(false);
+        this.newPassword = '';
+        this.confirmNewPassword = '';
+        this.loginPassword = '';
+        this.authMode.set('login');
+
+        this.notice.set('Senha alterada com sucesso! Entre com sua nova senha.');
+      } catch {
+        this.notice.set('Erro ao atualizar a senha. Tente novamente.');
+      }
+
+      return;
+    }
+
     // CADASTRO
     if (this.authMode() === 'signup') {
-      // Primeira etapa: dados de acesso
       if (this.signupStep() === 0) {
         if (!this.loginEmail.trim() || !this.loginPassword || !this.confirmPassword) {
           this.notice.set('Preencha todos os campos.');
@@ -322,7 +379,6 @@ export class App {
         return;
       }
 
-      // Segunda etapa: dados profissionais
       if (!this.profileName.trim() || !this.crtrValue.trim() || !this.workplaceValue.trim()) {
         this.notice.set('Preencha todos os dados profissionais.');
         return;
@@ -401,12 +457,35 @@ export class App {
     this.notice.set('');
   }
 
-  protected recoverPassword(): void {
-    this.notice.set(
-      this.loginEmail.trim()
-        ? 'A recuperação de senha será habilitada quando a autenticação for conectada.'
-        : 'Informe seu e-mail acima para solicitar a recuperação de senha.',
-    );
+  protected async recoverPassword(): Promise<void> {
+    if (!supabase) {
+      this.notice.set('Não foi possível conectar ao servidor.');
+      return;
+    }
+
+    const email = this.loginEmail.trim();
+
+    if (!email) {
+      this.notice.set('Informe seu e-mail acima para recuperar a senha.');
+      return;
+    }
+
+    this.notice.set('Enviando solicitação...');
+
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: window.location.origin + '/login',
+      });
+
+      if (error) {
+        this.notice.set('Não foi possível enviar o e-mail de recuperação.');
+        return;
+      }
+
+      this.notice.set('Enviamos um link para redefinir sua senha. Verifique seu e-mail.');
+    } catch {
+      this.notice.set('Erro ao solicitar recuperação. Tente novamente.');
+    }
   }
 
   protected previousSignupStep(): void {

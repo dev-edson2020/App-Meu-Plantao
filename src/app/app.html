@@ -15,46 +15,133 @@
         <h2>Criar conta</h2>
       </div>
       }
+
       <form class="auth-form" (ngSubmit)="submitAuth()">
-        @if (authMode() === 'login') {
-        <label class="auth-field"><span>E-mail</span><span class="input-shell"><svg lucideMail
-              class="ui-icon"></svg><input name="email" type="email" placeholder="seu@email.com" autocomplete="email"
-              [(ngModel)]="loginEmail" required /></span></label>
-        <label class="auth-field"><span>Senha</span><span class="input-shell"><svg lucideLockKeyhole
-              class="ui-icon"></svg><input name="password" type="password" placeholder="Sua senha"
-              autocomplete="current-password" [(ngModel)]="loginPassword" required /></span></label>
-        <button class="forgot-password" type="button" (click)="recoverPassword()">Esqueci minha senha</button>
-        <button class="button-primary auth-submit" type="submit"><svg lucideLogIn class="ui-icon"></svg>Entrar</button>
+
+        @if (isPasswordRecovery()) {
+        <label class="auth-field">
+          <span>Nova senha</span>
+          <span class="input-shell">
+            <svg lucideLockKeyhole class="ui-icon"></svg>
+            <input name="newPassword" type="password" placeholder="Digite sua nova senha" autocomplete="new-password"
+              [(ngModel)]="newPassword" required />
+          </span>
+        </label>
+
+        <label class="auth-field">
+          <span>Confirmar nova senha</span>
+          <span class="input-shell">
+            <svg lucideLockKeyhole class="ui-icon"></svg>
+            <input name="confirmNewPassword" type="password" placeholder="Repita sua nova senha"
+              autocomplete="new-password" [(ngModel)]="confirmNewPassword" required />
+          </span>
+        </label>
+
+        <button class="button-primary auth-submit" type="submit">
+          Salvar nova senha
+        </button>
+
+        } @else if (authMode() === 'login') {
+
+        <label class="auth-field">
+          <span>E-mail</span>
+          <span class="input-shell">
+            <svg lucideMail class="ui-icon"></svg>
+            <input name="email" type="email" placeholder="seu@email.com" autocomplete="email" [(ngModel)]="loginEmail"
+              required />
+          </span>
+        </label>
+
+        <label class="auth-field">
+          <span>Senha</span>
+          <span class="input-shell">
+            <svg lucideLockKeyhole class="ui-icon"></svg>
+            <input name="password" type="password" placeholder="Sua senha" autocomplete="current-password"
+              [(ngModel)]="loginPassword" required />
+          </span>
+        </label>
+
+        <button class="forgot-password" type="button" (click)="recoverPassword()">
+          Esqueci minha senha
+        </button>
+
+        <button class="button-primary auth-submit" type="submit">
+          <svg lucideLogIn class="ui-icon"></svg>
+          Entrar
+        </button>
+
         } @else if (signupStep() === 0) {
-        <label class="auth-field"><span>E-mail</span><span class="input-shell"><svg lucideMail
-              class="ui-icon"></svg><input name="signupEmail" type="text" inputmode="email" placeholder="seu@email.com"
-              autocomplete="email" [(ngModel)]="loginEmail" /></span></label>
-        <label class="auth-field"><span>Senha</span><span class="input-shell"><svg lucideLockKeyhole
-              class="ui-icon"></svg><input name="signupPassword" type="password" placeholder="Crie uma senha"
-              autocomplete="new-password" [(ngModel)]="loginPassword" /></span></label>
-        <label class="auth-field"><span>Confirmar senha</span><span class="input-shell"><svg lucideLockKeyhole
-              class="ui-icon"></svg><input name="confirmPassword" type="password" placeholder="Digite a senha novamente"
-              autocomplete="new-password" [(ngModel)]="confirmPassword" /></span></label>
-        <button class="button-primary auth-submit" type="submit">Continuar <svg lucideArrowRight
-            class="ui-icon"></svg></button>
+
+        <label class="auth-field">
+          <span>E-mail</span>
+          <span class="input-shell">
+            <svg lucideMail class="ui-icon"></svg>
+            <input name="signupEmail" type="text" inputmode="email" placeholder="seu@email.com" autocomplete="email"
+              [(ngModel)]="loginEmail" />
+          </span>
+        </label>
+
+        <label class="auth-field">
+          <span>Senha</span>
+          <span class="input-shell">
+            <svg lucideLockKeyhole class="ui-icon"></svg>
+            <input name="signupPassword" type="password" placeholder="Crie uma senha" autocomplete="new-password"
+              [(ngModel)]="loginPassword" />
+          </span>
+        </label>
+
+        <label class="auth-field">
+          <span>Confirmar senha</span>
+          <span class="input-shell">
+            <svg lucideLockKeyhole class="ui-icon"></svg>
+            <input name="confirmPassword" type="password" placeholder="Digite a senha novamente"
+              autocomplete="new-password" [(ngModel)]="confirmPassword" />
+          </span>
+        </label>
+
+        <button class="button-primary auth-submit" type="submit">
+          Continuar
+          <svg lucideArrowRight class="ui-icon"></svg>
+        </button>
+
         } @else {
-        <label class="auth-field"><span>Nome completo</span><span class="input-shell"><svg lucideUserRound
-              class="ui-icon"></svg><input name="signupName" autocomplete="name" placeholder="Seu nome completo"
-              [(ngModel)]="profileName" /></span></label>
+
+        <label class="auth-field">
+          <span>Nome completo</span>
+          <span class="input-shell">
+            <svg lucideUserRound class="ui-icon"></svg>
+            <input name="signupName" autocomplete="name" placeholder="Seu nome completo" [(ngModel)]="profileName" />
+          </span>
+        </label>
+
         <label class="auth-field">
           <span>Número do CRTR</span>
           <span class="input-shell">
             <input name="signupCrtr" placeholder="Número" [(ngModel)]="crtrValue" />
           </span>
         </label>
-        <label class="auth-field"><span>Hospital ou clínica</span><span class="input-shell"><svg lucideBuilding
-              class="ui-icon"></svg><input name="signupWorkplace" placeholder="Local de trabalho"
-              [(ngModel)]="workplaceValue" /></span></label>
-        <button class="signup-back" type="button" (click)="previousSignupStep()">Voltar aos dados de acesso</button>
-        <button class="button-primary auth-submit" type="submit"><svg lucideCheck class="ui-icon"></svg>Criar
-          conta</button>
+
+        <label class="auth-field">
+          <span>Hospital ou clínica</span>
+          <span class="input-shell">
+            <svg lucideBuilding class="ui-icon"></svg>
+            <input name="signupWorkplace" placeholder="Local de trabalho" [(ngModel)]="workplaceValue" />
+          </span>
+        </label>
+
+        <button class="signup-back" type="button" (click)="previousSignupStep()">
+          Voltar aos dados de acesso
+        </button>
+
+        <button class="button-primary auth-submit" type="submit">
+          <svg lucideCheck class="ui-icon"></svg>
+          Criar conta
+        </button>
+
         }
+
       </form>
+
       <button class="button-outline auth-alternate" type="button" (click)="toggleAuthMode()">{{ authMode() === 'login' ?
         'Criar conta' : 'Já tenho conta' }}</button>
       @if (authMode() === 'login') { <footer class="auth-footer">© 2026 Meu Plantão — Desenvolvido por Edson Meira.
