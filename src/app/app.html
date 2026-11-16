@@ -243,24 +243,32 @@
   @if (screen() === 'register') {
   <section class="form-screen screen-scroll">
 
-    <div class="register-intro" [class.is-exit]="!!activeAtendimento()">
 
-      @if (activeAtendimento()) {
-      <span class="register-indicator">
-        <i></i>
-        EM ANDAMENTO
-      </span>
-      }
+
+    <div class="register-intro" [class.is-exit]="!!activeAtendimento()">
 
       <h2>
         {{ activeAtendimento() ? 'Registrar Saída' : 'Registrar Entrada' }}
       </h2>
+
+      @if (activeAtendimento()) {
+      <span class="register-indicator">
+        <i></i>
+        ATENDIMENTO EM ANDAMENTO
+      </span>
+      }
     </div>
 
     <div class="clock-display">
-      <span>HORÁRIO ATUAL</span>
-      <strong>{{ clockNow() | date:'HH:mm:ss':'America/Sao_Paulo' }}</strong>
-      <small>{{ clockNow() | date:'dd/MM/yyyy':'America/Sao_Paulo' }}</small>
+      <span class="clock-label">HORÁRIO ATUAL</span>
+
+      <strong class="clock-time">
+        {{ clockNow() | date:'HH:mm:ss':'America/Sao_Paulo' }}
+      </strong>
+
+      <small class="clock-date">
+        {{ clockNow() | date:'dd/MM/yyyy':'America/Sao_Paulo' }}
+      </small>
     </div>
 
     @if (capturedAt()) {
@@ -291,9 +299,10 @@
       }
 
       <input #cameraPhoto id="clock-camera" type="file" accept="image/*" capture="environment"
-        (change)="handlePhoto($event)" />
+        (click)="captureCurrentAction()" (change)="handlePhoto($event)" />
 
-      <input #galleryPhoto id="clock-gallery" type="file" accept="image/*" (change)="handlePhoto($event)" />
+      <input #galleryPhoto id="clock-gallery" type="file" accept="image/*" (click)="captureCurrentAction()"
+        (change)="handlePhoto($event)" />
     </label>
 
     <div class="capture-tools">
@@ -322,6 +331,7 @@
       <svg lucideCheck class="ui-icon"></svg>
       Salvar Registro
     </button>
+
   </section>
   }
 

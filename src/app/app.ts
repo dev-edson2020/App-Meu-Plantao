@@ -1,4 +1,3 @@
-
 import { ChangeDetectorRef, Component, computed, signal, OnDestroy } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -215,11 +214,7 @@ export class App implements OnDestroy {
     for (const event of events) {
       if (event.kind === 'Entrada' && open === null) {
         open = event.occurredAt.getTime();
-      } else if (
-        event.kind === 'Saída' &&
-        open !== null &&
-        event.occurredAt.getTime() > open
-      ) {
+      } else if (event.kind === 'Saída' && open !== null && event.occurredAt.getTime() > open) {
         intervals.push([open, event.occurredAt.getTime()]);
         open = null;
       }
@@ -341,10 +336,7 @@ export class App implements OnDestroy {
     this.photoPreviewUrl = URL.createObjectURL(file);
   }
 
-  protected clearPhoto(
-    cameraInput: HTMLInputElement,
-    galleryInput: HTMLInputElement,
-  ): void {
+  protected clearPhoto(cameraInput: HTMLInputElement, galleryInput: HTMLInputElement): void {
     if (this.photoPreviewUrl) {
       URL.revokeObjectURL(this.photoPreviewUrl);
     }
@@ -379,16 +371,11 @@ export class App implements OnDestroy {
           return;
         }
 
-        const plantao = await this.plantaoService.startPlantao(
-          occurredAt.toISOString(),
-        );
+        const plantao = await this.plantaoService.startPlantao(occurredAt.toISOString());
 
         this.activePlantao.set(plantao);
 
-        const photoPath = await this.plantaoService.uploadPhoto(
-          this.selectedPhoto,
-          plantao.id,
-        );
+        const photoPath = await this.plantaoService.uploadPhoto(this.selectedPhoto, plantao.id);
 
         const atendimento = await this.plantaoService.startAtendimento(
           plantao.id,
@@ -407,19 +394,14 @@ export class App implements OnDestroy {
           return;
         }
 
-        const dataHoraEntrada = new Date(
-          atendimentoAtual.data_hora_entrada,
-        );
+        const dataHoraEntrada = new Date(atendimentoAtual.data_hora_entrada);
 
         if (occurredAt.getTime() <= dataHoraEntrada.getTime()) {
           this.notice.set('A Saída deve ter horário posterior à Entrada.');
           return;
         }
 
-        const photoPath = await this.plantaoService.uploadPhoto(
-          this.selectedPhoto,
-          plantao.id,
-        );
+        const photoPath = await this.plantaoService.uploadPhoto(this.selectedPhoto, plantao.id);
 
         await this.plantaoService.finishAtendimento(
           atendimentoAtual.id,
@@ -446,9 +428,7 @@ export class App implements OnDestroy {
       this.selectedYear.set(occurredAt.getFullYear());
 
       this.notice.set(
-        kind === 'Entrada'
-          ? 'Entrada registrada com sucesso!'
-          : 'Saída registrada com sucesso!',
+        kind === 'Entrada' ? 'Entrada registrada com sucesso!' : 'Saída registrada com sucesso!',
       );
 
       this.reasonValue = '';
@@ -527,11 +507,7 @@ export class App implements OnDestroy {
       return;
     }
 
-    if (
-      !this.profileName.trim() ||
-      !this.crtrValue.trim() ||
-      !this.workplaceValue.trim()
-    ) {
+    if (!this.profileName.trim() || !this.crtrValue.trim() || !this.workplaceValue.trim()) {
       this.notice.set('Preencha todos os campos.');
       this.cdr.detectChanges();
       return;
@@ -629,11 +605,7 @@ export class App implements OnDestroy {
         return;
       }
 
-      if (
-        !this.profileName.trim() ||
-        !this.crtrValue.trim() ||
-        !this.workplaceValue.trim()
-      ) {
+      if (!this.profileName.trim() || !this.crtrValue.trim() || !this.workplaceValue.trim()) {
         this.notice.set('Preencha todos os dados profissionais.');
         return;
       }
@@ -767,5 +739,12 @@ export class App implements OnDestroy {
       hourCycle: 'h23',
       timeZone: 'America/Sao_Paulo',
     }).format(date);
+  }
+
+  protected captureCurrentAction(): void {
+    const kind = this.activeAtendimento() ? 'Saída' : 'Entrada';
+
+    this.recordKind.set(kind);
+    this.capturedAt.set(new Date());
   }
 }

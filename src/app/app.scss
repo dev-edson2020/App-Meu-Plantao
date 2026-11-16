@@ -1878,199 +1878,152 @@ textarea:focus-visible {
 }
 
 
-/* =========================================
-   INDICADOR DINÂMICO DE ENTRADA E SAÍDA
-========================================= */
-
+/* Card centralizado de Entrada e Saída */
 .register-intro {
-  display: grid;
-  gap: 7px;
-  padding: 15px 14px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 88px;
+  padding: 14px;
   border: 1px solid rgba(65, 190, 215, .35);
-  border-left: 4px solid #35c9b0;
-  border-radius: 15px;
+  border-left: 3px solid #35c9b0;
+  border-radius: 14px;
   background: linear-gradient(115deg, #123e57, #0c2d46);
-  box-shadow: 0 7px 18px rgba(0, 8, 15, .16);
-  transition: background .2s, border-color .2s;
+  box-shadow: 0 6px 16px rgba(0, 8, 15, .15);
+  text-align: center;
 }
 
 .register-intro.is-exit {
   border-color: rgba(77, 177, 226, .4);
-  border-left: 4px solid #54b9ed;
+  border-left: 3px solid #54b9ed;
   background: linear-gradient(115deg, #124463, #0c304b);
-}
-
-.register-intro .register-indicator {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  color: #65dfc5;
-  font-size: 9px;
-  font-weight: 750;
-  letter-spacing: 1.1px;
-}
-
-.register-intro.is-exit .register-indicator {
-  color: #83d5f7;
-}
-
-.register-intro .register-indicator i {
-  width: 7px;
-  height: 7px;
-  flex: 0 0 7px;
-  border-radius: 50%;
-  background: currentColor;
-  box-shadow: 0 0 9px currentColor;
 }
 
 .register-intro h2 {
   margin: 0;
   color: #fff;
-  font-size: 20px;
+  font-size: 23px;
   line-height: 1.2;
   font-weight: 750;
   letter-spacing: -.4px;
 }
 
-.register-intro p {
-  margin: 0;
-  color: #c0d5df;
-  font-size: 11px;
-  line-height: 1.5;
+.register-intro .register-indicator {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  color: #e7a0a0;
+  font-size: 10px;
+  font-weight: 750;
+  letter-spacing: 1px;
 }
 
-/* =========================================
-   RELÓGIO
-========================================= */
+.register-intro .register-indicator i {
+  width: 8px;
+  height: 8px;
+  flex: 0 0 8px;
+  border-radius: 50%;
+  background: #ef5350;
+  box-shadow: 0 0 9px rgba(239, 83, 80, .65);
+}
 
-.clock-display {
+.record-success-message {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  padding: 13px;
+  margin-top: 10px;
+  border: 1px solid rgba(53, 201, 176, .4);
+  border-radius: 12px;
+  background: rgba(20, 105, 91, .22);
+  color: #75e2c5;
+  font-size: 12px;
+  font-weight: 700;
+  text-align: center;
+}
+
+.record-success-message .ui-icon {
+  width: 19px;
+  height: 19px;
+  flex-shrink: 0;
+}
+
+
+/* Relógio organizado */
+.form-screen .clock-display {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   gap: 7px;
-  min-height: 125px;
-  padding: 15px 12px;
+  width: 100%;
+  min-height: 112px;
+  padding: 13px;
   border: 1px solid rgba(91, 190, 218, .28);
-  border-radius: 20px;
+  border-radius: 18px;
   background:
-    radial-gradient(
-      ellipse at 50% 0%,
-      rgba(32, 133, 166, .25),
-      transparent 65%
-    ),
+    radial-gradient(ellipse at 50% 0%, rgba(32, 133, 166, .25), transparent 65%),
     linear-gradient(145deg, #103650, #0a2238 75%);
-  box-shadow:
-    0 12px 28px rgba(0, 7, 14, .2),
-    inset 0 1px rgba(255, 255, 255, .05);
   text-align: center;
 }
 
-.clock-display > span {
+.form-screen .clock-label {
+  display: block;
   color: #83ddec;
   font-size: 10px;
   font-weight: 700;
-  letter-spacing: 2px;
+  letter-spacing: 1.8px;
 }
 
-.clock-display strong {
+.form-screen .clock-time {
+  display: block;
   color: #f5fbfd;
-  font-size: clamp(34px, 9vw, 39px);
+  font-size: clamp(32px, 8vw, 37px);
   line-height: 1.1;
   font-weight: 700;
   letter-spacing: 1px;
   font-variant-numeric: tabular-nums;
-  text-shadow: 0 0 24px rgba(94, 211, 229, .16);
 }
 
-.clock-display small {
+.form-screen .clock-date {
+  display: block;
+  margin-top: 1px;
   color: #c0dce7;
   font-size: 15px;
   font-weight: 600;
-  letter-spacing: .3px;
+  letter-spacing: .4px;
 }
 
-/* Ajustes para celulares menores */
-@media (max-width: 370px) {
-  .register-intro {
-    padding: 12px;
-  }
-
-  .register-intro h2 {
-    font-size: 18px;
-  }
-
-  .clock-display {
-    min-height: 118px;
-    padding: 13px 10px;
-  }
-}
-
-
-/* Indicador compacto de Entrada e Saída */
-.register-intro {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  gap: 7px;
-  min-height: 66px;
-  padding: 13px 15px;
-  border: 1px solid rgba(65, 190, 215, .35);
-  border-left: 4px solid #35c9b0;
-  border-radius: 14px;
-  background: linear-gradient(115deg, #123e57, #0c2d46);
-  box-shadow: 0 6px 16px rgba(0, 8, 15, .15);
-}
-
-.register-intro.is-exit {
-  border-color: rgba(77, 177, 226, .4);
-  border-left: 4px solid #54b9ed;
-  background: linear-gradient(115deg, #124463, #0c304b);
-}
-
-.register-intro .register-indicator {
+/* Aviso único de confirmação */
+.toast {
   display: flex;
   align-items: center;
-  gap: 7px;
-  color: #83d5f7;
-  font-size: 9px;
-  font-weight: 750;
-  letter-spacing: 1.1px;
+  justify-content: center;
+  min-height: 43px;
+  margin: 8px 13px 10px;
+  padding: 11px 14px;
+  border: 1px solid rgba(53, 201, 176, .4);
+  border-radius: 12px;
+  background: linear-gradient(120deg, #103f43, #0c303c);
+  color: #8cebd2;
+  font-size: 11px;
+  font-weight: 700;
+  text-align: center;
+  box-shadow: 0 5px 16px rgba(0, 8, 15, .18);
 }
 
-.register-intro .register-indicator i {
-  width: 7px;
-  height: 7px;
-  flex: 0 0 7px;
-  border-radius: 50%;
-  background: currentColor;
-  box-shadow: 0 0 8px currentColor;
+/* Card de Entrada e Saída mais compacto */
+.form-screen .register-intro {
+  min-height: 58px;
+  padding: 9px 12px;
+  gap: 4px;
 }
 
-.register-intro h2 {
-  margin: 0;
-  color: #fff;
-  font-size: 20px;
-  line-height: 1.2;
-  font-weight: 750;
-  letter-spacing: -.4px;
-}
-
-/* Relógio mais compacto */
-.clock-display {
-  min-height: 108px;
-  padding: 12px;
-  gap: 5px;
-}
-
-.clock-display strong {
-  font-size: clamp(32px, 8vw, 36px);
-  line-height: 1.1;
-}
-
-.clock-display small {
-  font-size: 16px;
-  font-weight: 650;
-  color: #c0dce7;
-  letter-spacing: .4px;
+.form-screen .register-intro h2 {
+  font-size: 21px;
+  line-height: 1.15;
 }
