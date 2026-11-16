@@ -1878,19 +1878,87 @@ textarea:focus-visible {
 }
 
 
-/* Relógio atual - Registrar Ponto */
+/* =========================================
+   INDICADOR DINÂMICO DE ENTRADA E SAÍDA
+========================================= */
+
+.register-intro {
+  display: grid;
+  gap: 7px;
+  padding: 15px 14px;
+  border: 1px solid rgba(65, 190, 215, .35);
+  border-left: 4px solid #35c9b0;
+  border-radius: 15px;
+  background: linear-gradient(115deg, #123e57, #0c2d46);
+  box-shadow: 0 7px 18px rgba(0, 8, 15, .16);
+  transition: background .2s, border-color .2s;
+}
+
+.register-intro.is-exit {
+  border-color: rgba(77, 177, 226, .4);
+  border-left: 4px solid #54b9ed;
+  background: linear-gradient(115deg, #124463, #0c304b);
+}
+
+.register-intro .register-indicator {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #65dfc5;
+  font-size: 9px;
+  font-weight: 750;
+  letter-spacing: 1.1px;
+}
+
+.register-intro.is-exit .register-indicator {
+  color: #83d5f7;
+}
+
+.register-intro .register-indicator i {
+  width: 7px;
+  height: 7px;
+  flex: 0 0 7px;
+  border-radius: 50%;
+  background: currentColor;
+  box-shadow: 0 0 9px currentColor;
+}
+
+.register-intro h2 {
+  margin: 0;
+  color: #fff;
+  font-size: 20px;
+  line-height: 1.2;
+  font-weight: 750;
+  letter-spacing: -.4px;
+}
+
+.register-intro p {
+  margin: 0;
+  color: #c0d5df;
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+/* =========================================
+   RELÓGIO
+========================================= */
+
 .clock-display {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 9px;
-  min-height: 150px;
-  padding: 20px 16px;
+  gap: 7px;
+  min-height: 125px;
+  padding: 15px 12px;
   border: 1px solid rgba(91, 190, 218, .28);
   border-radius: 20px;
   background:
-    radial-gradient(ellipse at 50% 0%, rgba(32, 133, 166, .25), transparent 65%),
+    radial-gradient(
+      ellipse at 50% 0%,
+      rgba(32, 133, 166, .25),
+      transparent 65%
+    ),
     linear-gradient(145deg, #103650, #0a2238 75%);
   box-shadow:
     0 12px 28px rgba(0, 7, 14, .2),
@@ -1898,7 +1966,7 @@ textarea:focus-visible {
   text-align: center;
 }
 
-.clock-display>span {
+.clock-display > span {
   color: #83ddec;
   font-size: 10px;
   font-weight: 700;
@@ -1907,7 +1975,7 @@ textarea:focus-visible {
 
 .clock-display strong {
   color: #f5fbfd;
-  font-size: clamp(36px, 10vw, 46px);
+  font-size: clamp(34px, 9vw, 39px);
   line-height: 1.1;
   font-weight: 700;
   letter-spacing: 1px;
@@ -1916,85 +1984,93 @@ textarea:focus-visible {
 }
 
 .clock-display small {
-  color: #a9c7d4;
-  font-size: 13px;
-  font-weight: 500;
-  letter-spacing: .5px;
+  color: #c0dce7;
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: .3px;
 }
 
-/* Botões Entrada e Saída */
-.record-toggle {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 10px;
-  padding: 5px;
-  border: 1px solid rgba(105, 166, 194, .18);
-  border-radius: 16px;
-  background: rgba(4, 20, 34, .55);
+/* Ajustes para celulares menores */
+@media (max-width: 370px) {
+  .register-intro {
+    padding: 12px;
+  }
+
+  .register-intro h2 {
+    font-size: 18px;
+  }
+
+  .clock-display {
+    min-height: 118px;
+    padding: 13px 10px;
+  }
 }
 
-.record-toggle button {
+
+/* Indicador compacto de Entrada e Saída */
+.register-intro {
   display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  min-height: 52px;
-  border: 1px solid rgba(105, 176, 202, .2);
-  border-radius: 12px;
-  background: linear-gradient(145deg, #12364f, #0b293f);
-  color: #b9ced9;
-  font-size: 13px;
-  font-weight: 650;
-  transition: .2s ease;
-}
-
-.record-toggle button.selected {
-  border-color: rgba(93, 199, 229, .45);
-  background: linear-gradient(110deg, #159ad7, #0873bc);
-  color: #fff;
-  box-shadow: 0 5px 17px rgba(0, 105, 173, .25);
-}
-
-.record-toggle button:active {
-  transform: scale(.98);
-}
-
-.record-toggle button .ui-icon {
-  width: 19px;
-  height: 19px;
-}
-
-/* Horário capturado ao selecionar Entrada ou Saída */
-.captured-time {
-  display: flex;
-  align-items: center;
+  flex-direction: column;
   justify-content: center;
   gap: 7px;
-  min-height: 40px;
-  padding: 9px 12px;
-  border: 1px solid rgba(93, 199, 216, .22);
-  border-radius: 12px;
-  background: rgba(13, 53, 72, .65);
-  color: #b9d5df;
-  font-size: 11px;
-  text-align: center;
+  min-height: 66px;
+  padding: 13px 15px;
+  border: 1px solid rgba(65, 190, 215, .35);
+  border-left: 4px solid #35c9b0;
+  border-radius: 14px;
+  background: linear-gradient(115deg, #123e57, #0c2d46);
+  box-shadow: 0 6px 16px rgba(0, 8, 15, .15);
 }
 
-.captured-time strong {
-  color: #8be4ec;
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
+.register-intro.is-exit {
+  border-color: rgba(77, 177, 226, .4);
+  border-left: 4px solid #54b9ed;
+  background: linear-gradient(115deg, #124463, #0c304b);
 }
 
-/* Ajustes para telas menores */
-@media (max-width: 370px) {
-  .clock-display {
-    min-height: 138px;
-    padding: 16px 12px;
-  }
+.register-intro .register-indicator {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: #83d5f7;
+  font-size: 9px;
+  font-weight: 750;
+  letter-spacing: 1.1px;
+}
 
-  .record-toggle button {
-    min-height: 48px;
-    font-size: 12px;
-  }
+.register-intro .register-indicator i {
+  width: 7px;
+  height: 7px;
+  flex: 0 0 7px;
+  border-radius: 50%;
+  background: currentColor;
+  box-shadow: 0 0 8px currentColor;
+}
+
+.register-intro h2 {
+  margin: 0;
+  color: #fff;
+  font-size: 20px;
+  line-height: 1.2;
+  font-weight: 750;
+  letter-spacing: -.4px;
+}
+
+/* Relógio mais compacto */
+.clock-display {
+  min-height: 108px;
+  padding: 12px;
+  gap: 5px;
+}
+
+.clock-display strong {
+  font-size: clamp(32px, 8vw, 36px);
+  line-height: 1.1;
+}
+
+.clock-display small {
+  font-size: 16px;
+  font-weight: 650;
+  color: #c0dce7;
+  letter-spacing: .4px;
 }
