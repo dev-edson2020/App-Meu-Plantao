@@ -1,12 +1,25 @@
-import { ChangeDetectorRef, Component, computed, signal, OnDestroy } from '@angular/core';
+import {
+  ChangeDetectorRef,
+  Component,
+  computed,
+  signal,
+  OnDestroy,
+  inject,
+  effect,
+  untracked,
+} from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { NavigationEnd, Router, RouterOutlet } from '@angular/router';
 import { filter } from 'rxjs';
+
 import { supabase } from './core/supabase-client';
 import { PlantaoService } from './core/plantao.service';
 import type { Plantao, Atendimento } from './core/plantao.service';
+import { ToastService } from './core/toast';
+
 import { AppHeaderComponent } from './shared/app-header/app-header';
+import { ToastComponent } from './shared/toast/toast';
 
 import {
   LucideArrowRight,
@@ -52,6 +65,7 @@ interface TimeRecord {
     DatePipe,
     RouterOutlet,
     AppHeaderComponent,
+    ToastComponent,
     LucideArrowRight,
     LucideArrowRightToLine,
     LucideArrowLeftToLine,
@@ -80,6 +94,28 @@ interface TimeRecord {
   styleUrl: './app.scss',
 })
 export class App implements OnDestroy {
+  private readonly toastService = inject(ToastService);
+
+  private readonly toastEffect = effect(() => {
+    const message = this.notice();
+
+    if (!message) return;
+
+    if (message.toLowerCase().includes('sucesso')) {
+      this.toastService.success(message);
+    } else if (
+      message.toLowerCase().includes('erro') ||
+      message.toLowerCase().includes('não foi possível') ||
+      message.toLowerCase().includes('inválid')
+    ) {
+      this.toastService.error(message);
+    } else {
+      this.toastService.info(message);
+    }
+
+    untracked(() => this.notice.set(''));
+  });
+
   protected readonly screen = signal<Screen>('welcome');
   protected readonly showExitConfirmation = signal(false);
   private readonly previousScreen = signal<Screen>('welcome');

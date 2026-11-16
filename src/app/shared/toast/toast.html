@@ -1,0 +1,37 @@
+
+@if (toastService.currentToast(); as toast) {
+  <div class="toast-container">
+    <div class="toast-card" [class]=" 'toast-card toast-' + toast.type">
+
+      <div class="toast-icon">
+        @switch (toast.type) {
+          @case ('success') { ✓ }
+          @case ('info') { i }
+          @case ('warning') { ! }
+          @case ('error') { × }
+        }
+      </div>
+
+      <div class="toast-content">
+        <strong>{{ toast.title }}</strong>
+        <span>{{ toast.message }}</span>
+      </div>
+
+      <button
+        type="button"
+        class="toast-close"
+        aria-label="Fechar notificação"
+        (click)="toastService.dismiss()">
+        ×
+      </button>
+
+      @if (toast.duration > 0) {
+        <div
+          class="toast-progress"
+          [style.animation-duration]="toast.duration + 'ms'">
+        </div>
+      }
+
+    </div>
+  </div>
+}

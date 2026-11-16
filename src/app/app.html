@@ -149,10 +149,6 @@
         © 2026 Meu Plantão — Desenvolvido por Edson Meira.
       </footer>
       }
-
-      @if (notice()) {
-      <p class="auth-notice" role="status">{{ notice() }}</p>
-      }
     </div>
   </section>
 
@@ -513,10 +509,6 @@
   </section>
   }
 
-  @if (notice()) {
-  <div class="toast" role="status">{{ notice() }}</div>
-  }
-
   @if (screen() !== 'register') {
   <nav class="bottom-nav" aria-label="Navegação inferior">
     <button [class.active]="screen() === 'home'" (click)="go('home')">
@@ -565,4 +557,5 @@
 
   <router-outlet />
   }
+  <app-toast />
 </main>
