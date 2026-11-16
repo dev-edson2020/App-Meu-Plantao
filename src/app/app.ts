@@ -1,10 +1,14 @@
-import { ChangeDetectorRef, Component, computed, signal } from '@angular/core';
+
+import { ChangeDetectorRef, Component, computed, signal, OnDestroy } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { NavigationEnd, Router, RouterOutlet } from '@angular/router';
 import { filter } from 'rxjs';
-import { supabase, isSupabaseConfigured } from './core/supabase-client';
+import { supabase } from './core/supabase-client';
+import { PlantaoService } from './core/plantao.service';
+import type { Plantao, Atendimento } from './core/plantao.service';
 import { AppHeaderComponent } from './shared/app-header/app-header';
+
 import {
   LucideArrowRight,
   LucideArrowRightToLine,
@@ -76,7 +80,7 @@ interface TimeRecord {
   templateUrl: './app.html',
   styleUrl: './app.scss',
 })
-export class App {
+export class App implements OnDestroy {
   protected readonly screen = signal<Screen>('welcome');
   protected readonly showExitConfirmation = signal(false);
   private readonly previousScreen = signal<Screen>('welcome');
@@ -87,12 +91,18 @@ export class App {
   protected readonly signupStep = signal(0);
   protected readonly recordKind = signal<RecordKind>('Entrada');
   protected readonly records = signal<TimeRecord[]>([]);
+  protected readonly activePlantao = signal<Plantao | null>(null);
+  protected readonly activeAtendimento = signal<Atendimento | null>(null);
   protected readonly notice = signal('');
+
+  protected readonly clockNow = signal(new Date());
+  protected readonly capturedAt = signal<Date | null>(null);
+  private clockTimer: ReturnType<typeof setInterval> | undefined;
+
   protected readonly now = new Date();
-  protected dateValue = this.inputDate(this.now);
-  protected timeValue = this.inputTime(this.now);
   protected reasonValue = '';
   protected photoName = '';
+  protected selectedPhoto: File | null = null;
   protected photoPreviewUrl = '';
   protected profileName = '';
   protected crtrValue = '';
@@ -103,6 +113,7 @@ export class App {
   protected confirmPassword = '';
   protected readonly selectedMonth = signal(this.now.getMonth());
   protected readonly selectedYear = signal(this.now.getFullYear());
+
   protected readonly crtrDisplay = computed(
     () =>
       [this.crtrValue, this.crtrRegionValue].filter(Boolean).join(' · ') || 'CRTR não informado',
@@ -111,8 +122,14 @@ export class App {
   constructor(
     private readonly router: Router,
     private readonly cdr: ChangeDetectorRef,
+    private readonly plantaoService: PlantaoService,
   ) {
     this.screen.set(this.screenFromUrl(this.router.url));
+
+    this.clockTimer = setInterval(() => {
+      this.clockNow.set(new Date());
+      this.cdr.detectChanges();
+    }, 1000);
 
     supabase?.auth.onAuthStateChange((event, session) => {
       if (event === 'PASSWORD_RECOVERY') {
@@ -124,10 +141,12 @@ export class App {
 
       if (event === 'SIGNED_IN' && session) {
         void this.loadProfile(session.user.id);
+        void this.loadActivePlantao();
       }
 
       if (event === 'INITIAL_SESSION' && session) {
         void this.loadProfile(session.user.id);
+        void this.loadActivePlantao();
       }
 
       if (event === 'SIGNED_OUT') {
@@ -135,6 +154,8 @@ export class App {
         this.crtrValue = '';
         this.crtrRegionValue = '';
         this.workplaceValue = '';
+        this.activePlantao.set(null);
+        this.activeAtendimento.set(null);
       }
     });
 
@@ -148,6 +169,17 @@ export class App {
           this.screen.set(nextScreen);
         }
       });
+  }
+
+  protected captureRecordKind(kind: RecordKind): void {
+    this.recordKind.set(kind);
+    this.capturedAt.set(new Date());
+  }
+
+  ngOnDestroy(): void {
+    if (this.clockTimer !== undefined) {
+      clearInterval(this.clockTimer);
+    }
   }
 
   protected readonly monthLabel = computed(() =>
@@ -176,26 +208,42 @@ export class App {
     const events = this.visibleRecords()
       .slice()
       .sort((a, b) => a.occurredAt.getTime() - b.occurredAt.getTime());
+
     const intervals: Array<[number, number]> = [];
     let open: number | null = null;
+
     for (const event of events) {
-      if (event.kind === 'Entrada' && open === null) open = event.occurredAt.getTime();
-      else if (event.kind === 'Saída' && open !== null && event.occurredAt.getTime() > open) {
+      if (event.kind === 'Entrada' && open === null) {
+        open = event.occurredAt.getTime();
+      } else if (
+        event.kind === 'Saída' &&
+        open !== null &&
+        event.occurredAt.getTime() > open
+      ) {
         intervals.push([open, event.occurredAt.getTime()]);
         open = null;
       }
     }
+
     intervals.sort((a, b) => a[0] - b[0]);
+
     let total = 0;
     let current: [number, number] | null = null;
+
     for (const interval of intervals) {
       if (!current || interval[0] > current[1]) {
         if (current) total += current[1] - current[0];
         current = [...interval];
-      } else current[1] = Math.max(current[1], interval[1]);
+      } else {
+        current[1] = Math.max(current[1], interval[1]);
+      }
     }
+
     if (current) total += current[1] - current[0];
-    return `${Math.floor(total / 3_600_000)}h ${String(Math.floor((total % 3_600_000) / 60_000)).padStart(2, '0')}min`;
+
+    return `${Math.floor(total / 3_600_000)}h ${String(
+      Math.floor((total % 3_600_000) / 60_000),
+    ).padStart(2, '0')}min`;
   });
 
   protected go(screen: Screen): void {
@@ -230,8 +278,10 @@ export class App {
   private async signOutCurrentSession(): Promise<void> {
     try {
       const { supabase } = await import('./core/supabase-client');
+
       if (supabase) {
         const { error } = await supabase.auth.signOut({ scope: 'local' });
+
         if (error) {
           this.notice.set('Não foi possível encerrar a sessão. Tente novamente.');
           return;
@@ -239,7 +289,6 @@ export class App {
       }
     } catch {
       this.notice.set('Não foi possível encerrar a sessão. Tente novamente.');
-      return;
     }
   }
 
@@ -252,11 +301,13 @@ export class App {
       reports: '/reports',
       profile: '/profile',
     };
+
     return paths[screen];
   }
 
   private screenFromUrl(url: string): Screen {
     const path = url.split(/[?#]/, 1)[0].replace(/^\/+|\/+$/g, '');
+
     const screens: Record<string, Screen> = {
       login: 'welcome',
       dashboard: 'home',
@@ -265,6 +316,7 @@ export class App {
       reports: 'reports',
       profile: 'profile',
     };
+
     return screens[path] ?? 'welcome';
   }
 
@@ -277,45 +329,146 @@ export class App {
   protected handlePhoto(event: Event): void {
     const input = event.target as HTMLInputElement;
     const file = input.files?.[0];
+
     if (!file) return;
-    if (this.photoPreviewUrl) URL.revokeObjectURL(this.photoPreviewUrl);
+
+    if (this.photoPreviewUrl) {
+      URL.revokeObjectURL(this.photoPreviewUrl);
+    }
+
+    this.selectedPhoto = file;
     this.photoName = file.name;
     this.photoPreviewUrl = URL.createObjectURL(file);
   }
 
-  protected clearPhoto(cameraInput: HTMLInputElement, galleryInput: HTMLInputElement): void {
-    if (this.photoPreviewUrl) URL.revokeObjectURL(this.photoPreviewUrl);
+  protected clearPhoto(
+    cameraInput: HTMLInputElement,
+    galleryInput: HTMLInputElement,
+  ): void {
+    if (this.photoPreviewUrl) {
+      URL.revokeObjectURL(this.photoPreviewUrl);
+    }
+
+    this.selectedPhoto = null;
     this.photoName = '';
     this.photoPreviewUrl = '';
     cameraInput.value = '';
     galleryInput.value = '';
   }
 
-  protected saveRecord(): void {
-    if (!this.dateValue || !this.timeValue) {
-      this.notice.set('Informe a data e o horário do registro.');
+  protected async saveRecord(): Promise<void> {
+    const occurredAt = this.capturedAt();
+
+    if (!occurredAt) {
+      this.notice.set('Selecione Entrada ou Saída para capturar o horário.');
       return;
     }
-    const occurredAt = new Date(`${this.dateValue}T${this.timeValue}:00`);
-    this.records.update((items) => [
-      ...items,
-      {
-        id: Date.now(),
-        kind: this.recordKind(),
-        occurredAt,
-        reason: this.reasonValue.trim(),
-        photoName: this.photoName,
-      },
-    ]);
-    this.selectedMonth.set(occurredAt.getMonth());
-    this.selectedYear.set(occurredAt.getFullYear());
-    this.notice.set(
-      'Registro adicionado nesta sessão. A sincronização com sua conta será conectada na próxima etapa.',
-    );
-    this.reasonValue = '';
-    this.photoName = '';
-    if (this.photoPreviewUrl) URL.revokeObjectURL(this.photoPreviewUrl);
-    this.photoPreviewUrl = '';
+
+    if (!this.selectedPhoto) {
+      this.notice.set('Adicione uma foto para continuar.');
+      return;
+    }
+
+    const kind = this.recordKind();
+    const reason = this.reasonValue.trim();
+
+    try {
+      if (kind === 'Entrada') {
+        if (this.activeAtendimento()) {
+          this.notice.set('Já existe um atendimento em andamento. Registre a Saída primeiro.');
+          return;
+        }
+
+        const plantao = await this.plantaoService.startPlantao(
+          occurredAt.toISOString(),
+        );
+
+        this.activePlantao.set(plantao);
+
+        const photoPath = await this.plantaoService.uploadPhoto(
+          this.selectedPhoto,
+          plantao.id,
+        );
+
+        const atendimento = await this.plantaoService.startAtendimento(
+          plantao.id,
+          occurredAt.toISOString(),
+          photoPath,
+          reason || null,
+        );
+
+        this.activeAtendimento.set(atendimento);
+      } else {
+        const plantao = this.activePlantao();
+        const atendimentoAtual = this.activeAtendimento();
+
+        if (!plantao || !atendimentoAtual) {
+          this.notice.set('Não existe atendimento aberto para registrar a Saída.');
+          return;
+        }
+
+        const dataHoraEntrada = new Date(
+          atendimentoAtual.data_hora_entrada,
+        );
+
+        if (occurredAt.getTime() <= dataHoraEntrada.getTime()) {
+          this.notice.set('A Saída deve ter horário posterior à Entrada.');
+          return;
+        }
+
+        const photoPath = await this.plantaoService.uploadPhoto(
+          this.selectedPhoto,
+          plantao.id,
+        );
+
+        await this.plantaoService.finishAtendimento(
+          atendimentoAtual.id,
+          occurredAt.toISOString(),
+          photoPath,
+          reason || null,
+        );
+
+        this.activeAtendimento.set(null);
+      }
+
+      this.records.update((items) => [
+        ...items,
+        {
+          id: Date.now(),
+          kind,
+          occurredAt,
+          reason,
+          photoName: this.photoName,
+        },
+      ]);
+
+      this.selectedMonth.set(occurredAt.getMonth());
+      this.selectedYear.set(occurredAt.getFullYear());
+
+      this.notice.set(
+        kind === 'Entrada'
+          ? 'Entrada registrada com sucesso!'
+          : 'Saída registrada com sucesso!',
+      );
+
+      this.reasonValue = '';
+      this.selectedPhoto = null;
+      this.photoName = '';
+      this.capturedAt.set(null);
+
+      if (this.photoPreviewUrl) {
+        URL.revokeObjectURL(this.photoPreviewUrl);
+      }
+
+      this.photoPreviewUrl = '';
+      this.cdr.detectChanges();
+    } catch (error) {
+      console.error('Erro ao salvar registro:', error);
+      this.notice.set(
+        'Não foi possível salvar o registro. Verifique sua conexão e tente novamente.',
+      );
+      this.cdr.detectChanges();
+    }
   }
 
   private async loadProfile(userId: string): Promise<void> {
@@ -340,6 +493,25 @@ export class App {
     this.cdr.detectChanges();
   }
 
+  private async loadActivePlantao(): Promise<void> {
+    try {
+      const plantao = await this.plantaoService.getOpenPlantao();
+      this.activePlantao.set(plantao);
+
+      if (plantao) {
+        const atendimento = await this.plantaoService.getOpenAtendimento(plantao.id);
+        this.activeAtendimento.set(atendimento);
+      } else {
+        this.activeAtendimento.set(null);
+      }
+
+      this.cdr.detectChanges();
+    } catch {
+      this.notice.set('Não foi possível carregar o plantão em andamento.');
+      this.cdr.detectChanges();
+    }
+  }
+
   protected async saveProfile(): Promise<void> {
     if (!supabase) {
       this.notice.set('Não foi possível conectar ao servidor.');
@@ -355,7 +527,11 @@ export class App {
       return;
     }
 
-    if (!this.profileName.trim() || !this.crtrValue.trim() || !this.workplaceValue.trim()) {
+    if (
+      !this.profileName.trim() ||
+      !this.crtrValue.trim() ||
+      !this.workplaceValue.trim()
+    ) {
       this.notice.set('Preencha todos os campos.');
       this.cdr.detectChanges();
       return;
@@ -387,7 +563,6 @@ export class App {
       return;
     }
 
-    // RECUPERAÇÃO DE SENHA
     if (this.isPasswordRecovery()) {
       if (!this.newPassword || !this.confirmNewPassword) {
         this.notice.set('Preencha os dois campos de senha.');
@@ -432,7 +607,6 @@ export class App {
       return;
     }
 
-    // CADASTRO
     if (this.authMode() === 'signup') {
       if (this.signupStep() === 0) {
         if (!this.loginEmail.trim() || !this.loginPassword || !this.confirmPassword) {
@@ -455,7 +629,11 @@ export class App {
         return;
       }
 
-      if (!this.profileName.trim() || !this.crtrValue.trim() || !this.workplaceValue.trim()) {
+      if (
+        !this.profileName.trim() ||
+        !this.crtrValue.trim() ||
+        !this.workplaceValue.trim()
+      ) {
         this.notice.set('Preencha todos os dados profissionais.');
         return;
       }
@@ -501,7 +679,6 @@ export class App {
       return;
     }
 
-    // LOGIN
     if (!this.loginEmail.trim() || !this.loginPassword) {
       this.notice.set('Informe seu e-mail e sua senha.');
       return;
@@ -589,26 +766,6 @@ export class App {
       minute: '2-digit',
       hourCycle: 'h23',
       timeZone: 'America/Sao_Paulo',
-    }).format(date);
-  }
-
-  private inputDate(date: Date): string {
-    const parts = new Intl.DateTimeFormat('en-CA', {
-      timeZone: 'America/Sao_Paulo',
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-    }).formatToParts(date);
-    const part = (type: string) => parts.find((item) => item.type === type)?.value ?? '';
-    return `${part('year')}-${part('month')}-${part('day')}`;
-  }
-
-  private inputTime(date: Date): string {
-    return new Intl.DateTimeFormat('pt-BR', {
-      timeZone: 'America/Sao_Paulo',
-      hour: '2-digit',
-      minute: '2-digit',
-      hourCycle: 'h23',
     }).format(date);
   }
 }
