@@ -1,4 +1,4 @@
-import { Component, computed, signal } from '@angular/core';
+import { ChangeDetectorRef, Component, computed, signal } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { NavigationEnd, Router, RouterOutlet } from '@angular/router';
@@ -108,14 +108,33 @@ export class App {
       [this.crtrValue, this.crtrRegionValue].filter(Boolean).join(' · ') || 'CRTR não informado',
   );
 
-  constructor(private readonly router: Router) {
+  constructor(
+    private readonly router: Router,
+    private readonly cdr: ChangeDetectorRef,
+  ) {
     this.screen.set(this.screenFromUrl(this.router.url));
 
-    supabase?.auth.onAuthStateChange((event) => {
+    supabase?.auth.onAuthStateChange((event, session) => {
       if (event === 'PASSWORD_RECOVERY') {
         this.isPasswordRecovery.set(true);
         this.screen.set('welcome');
         this.notice.set('Digite sua nova senha.');
+        return;
+      }
+
+      if (event === 'SIGNED_IN' && session) {
+        void this.loadProfile(session.user.id);
+      }
+
+      if (event === 'INITIAL_SESSION' && session) {
+        void this.loadProfile(session.user.id);
+      }
+
+      if (event === 'SIGNED_OUT') {
+        this.profileName = '';
+        this.crtrValue = '';
+        this.crtrRegionValue = '';
+        this.workplaceValue = '';
       }
     });
 
@@ -299,10 +318,67 @@ export class App {
     this.photoPreviewUrl = '';
   }
 
-  protected saveProfile(): void {
-    this.notice.set(
-      'Alterações mantidas nesta sessão. A sincronização com sua conta será conectada na próxima etapa.',
-    );
+  private async loadProfile(userId: string): Promise<void> {
+    if (!supabase) return;
+
+    const { data, error } = await supabase
+      .from('perfis')
+      .select('nome_completo, numero_crtr, local_trabalho')
+      .eq('id', userId)
+      .single();
+
+    if (error) {
+      this.notice.set('Não foi possível carregar seus dados profissionais.');
+      return;
+    }
+
+    this.profileName = data.nome_completo ?? '';
+    this.crtrValue = data.numero_crtr ?? '';
+    this.crtrRegionValue = '';
+    this.workplaceValue = data.local_trabalho ?? '';
+
+    this.cdr.detectChanges();
+  }
+
+  protected async saveProfile(): Promise<void> {
+    if (!supabase) {
+      this.notice.set('Não foi possível conectar ao servidor.');
+      this.cdr.detectChanges();
+      return;
+    }
+
+    const { data: userData, error: userError } = await supabase.auth.getUser();
+
+    if (userError || !userData.user) {
+      this.notice.set('Sua sessão expirou. Entre novamente.');
+      this.cdr.detectChanges();
+      return;
+    }
+
+    if (!this.profileName.trim() || !this.crtrValue.trim() || !this.workplaceValue.trim()) {
+      this.notice.set('Preencha todos os campos.');
+      this.cdr.detectChanges();
+      return;
+    }
+
+    const { error } = await supabase
+      .from('perfis')
+      .update({
+        nome_completo: this.profileName.trim(),
+        numero_crtr: this.crtrValue.trim(),
+        local_trabalho: this.workplaceValue.trim(),
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', userData.user.id);
+
+    if (error) {
+      this.notice.set('Não foi possível salvar as alterações.');
+      this.cdr.detectChanges();
+      return;
+    }
+
+    this.notice.set('Cadastro atualizado com sucesso!');
+    this.cdr.detectChanges();
   }
 
   protected async submitAuth(): Promise<void> {
