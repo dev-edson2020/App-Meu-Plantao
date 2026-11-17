@@ -3,8 +3,8 @@
   position: relative;
   z-index: 2;
   display: block;
-  flex: 0 0 180px;
-  min-height: 180px;
+  flex: 0 0 132px;
+  min-height: 132px;
   width: 100%;
 }
 
@@ -13,7 +13,7 @@
   position: relative;
   display: block;
   width: 100%;
-  height: 180px;
+  height: 132px;
   overflow: hidden;
   padding: 0;
   background: #071a2b;
@@ -27,7 +27,7 @@
   top: 0;
   left: 0;
   width: 100%;
-  height: 132px;
+  height: 96px;
   background-image: url('/images/radiology-reading-room.jpg');
   background-position: 62% 43%;
   background-size: cover;
@@ -40,7 +40,7 @@
   top: 0;
   left: 0;
   width: 100%;
-  height: 132px;
+  height: 96px;
   content: '';
   pointer-events: none;
   background:
@@ -62,7 +62,7 @@
 .exit-action {
   position: absolute;
   z-index: 4;
-  top: 13px;
+  top: max(13px, env(safe-area-inset-top));
   display: flex;
   align-items: center;
   justify-content: center;
@@ -108,7 +108,7 @@
   position: absolute;
   z-index: 3;
   left: 24px;
-  bottom: 67px;
+  bottom: 52px;
   display: grid;
   gap: 5px;
   padding: 0;
@@ -141,11 +141,11 @@
 .page-title {
   position: absolute;
   z-index: 3;
-  top: 132px;
+  top: 96px;
   left: 0;
   right: 0;
   width: 100%;
-  height: 48px;
+  height: 36px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -223,7 +223,7 @@
 }
 
 .home-header .exit-action {
-  top: 13px;
+  top: max(13px, env(safe-area-inset-top));
 }
 
 /* Acessibilidade */
@@ -235,22 +235,22 @@ button:focus-visible {
 /* Celulares menores */
 @media (max-width: 370px) {
   :host {
-    flex-basis: 170px;
-    min-height: 170px;
+    flex-basis: 122px;
+    min-height: 122px;
   }
 
   .screen-header {
-    height: 170px;
+    height: 122px;
   }
 
   .header-photo,
   .screen-header::after {
-    height: 116px;
+    height: 78px;
   }
 
   .brand-lockup {
     left: 18px;
-    bottom: 61px;
+    bottom: 48px;
   }
 
   .brand-lockup strong {
@@ -262,8 +262,8 @@ button:focus-visible {
   }
 
   .page-title {
-    top: 116px;
-    height: 54px;
+    top: 78px;
+    height: 44px;
     font-size: 16px;
   }
 
@@ -304,4 +304,27 @@ button:focus-visible {
     min-width: 52px;
     padding: 0 7px;
   }
+}
+
+@media (max-height: 600px) {
+  :host {
+    flex-basis: 108px;
+    min-height: 108px;
+  }
+
+  .screen-header { height: 108px; }
+  .header-photo,
+  .screen-header::after { height: 72px; }
+  .brand-lockup { bottom: 48px; }
+  .page-title { top: 72px; height: 36px; font-size: 15px; }
+
+  :host:has(.home-header) {
+    flex-basis: 96px;
+    min-height: 96px;
+  }
+
+  .home-header,
+  .home-header .header-photo,
+  .home-header::after { height: 96px; }
+  .home-header .screen-heading { bottom: 11px; }
 }

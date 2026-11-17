@@ -1,0 +1,9 @@
+<section class="profile-screen screen-scroll">
+  <div class="profile-intro"><span class="profile-avatar"><svg lucideUserRound class="ui-icon"></svg></span><p>Seus dados profissionais</p></div>
+  <div #profileFields class="profile-fields">
+    <label class="profile-field"><span><svg lucideUserRound class="ui-icon"></svg>Nome completo</span><input name="profileName" autocomplete="name" placeholder="Seu nome completo" required [ngModel]="vm.profileName()" (ngModelChange)="vm.profileName.set($event)" />@if(vm.profileSubmitted() && !vm.profileName().trim()){<app-field-error message="Informe seu nome completo." />}</label>
+    <label class="profile-field"><span><svg lucideFileText class="ui-icon"></svg>N&#250;mero do CRTR</span><input name="crtr" placeholder="N&#250;mero de registro" required [ngModel]="vm.crtrValue()" (ngModelChange)="vm.crtrValue.set($event)" />@if(vm.profileSubmitted() && !vm.crtrValue().trim()){<app-field-error message="Informe o n&#250;mero do CRTR." />}</label>
+    <label class="profile-field"><span><svg lucideBuilding class="ui-icon"></svg>Local de trabalho</span><input name="workplace" placeholder="Nome do hospital ou cl&#237;nica" required [ngModel]="vm.workplaceValue()" (ngModelChange)="vm.workplaceValue.set($event)" />@if(vm.profileSubmitted() && !vm.workplaceValue().trim()){<app-field-error message="Informe o local de trabalho." />}</label>
+  </div>
+  <button class="button-primary profile-save" type="button" (click)="vm.saveProfile(profileFields)"><svg lucideCheck class="ui-icon"></svg>Salvar Altera&#231;&#245;es</button>
+</section>

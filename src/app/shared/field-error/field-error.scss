@@ -1,0 +1,21 @@
+﻿.field-error {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 5px;
+  color: #ef4444;
+  font-size: 11px;
+  line-height: 1.4;
+
+  span {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 14px;
+    height: 14px;
+    border: 1px solid currentColor;
+    border-radius: 50%;
+    font-size: 9px;
+    font-weight: 700;
+  }
+}

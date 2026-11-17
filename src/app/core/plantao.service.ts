@@ -1,6 +1,7 @@
 
 import { Injectable } from '@angular/core';
-import { supabase } from './supabase-client';
+import type { SupabaseClient } from '@supabase/supabase-js';
+import { getSupabase } from './supabase-client';
 
 export interface Plantao {
   id: string;
@@ -26,11 +27,15 @@ export interface Atendimento {
 export class PlantaoService {
   private readonly bucket = 'fotos-atendimentos';
 
-  private async getUserId(): Promise<string> {
-    if (!supabase) {
-      throw new Error('Supabase não está configurado.');
+  private async getClient(): Promise<SupabaseClient | null> {
+    try {
+      return await getSupabase();
+    } catch {
+      return null;
     }
+  }
 
+  private async getUserId(supabase: SupabaseClient): Promise<string> {
     const { data, error } = await supabase.auth.getUser();
 
     if (error || !data.user) {
@@ -40,12 +45,33 @@ export class PlantaoService {
     return data.user.id;
   }
 
+  async getAtendimentos(): Promise<Atendimento[]> {
+    const supabase = await this.getClient();
+    if (!supabase) throw new Error('Supabase n\u00e3o est\u00e1 configurado.');
+    const userId = await this.getUserId(supabase);
+    const { data, error } = await supabase
+      .from('atendimentos')
+      .select('*')
+      .eq('usuario_id', userId)
+      .order('data_hora_entrada', { ascending: false });
+    if (error) throw new Error('N\u00e3o foi poss\u00edvel consultar os registros.');
+    return data ?? [];
+  }
+
+  async getPhotoUrl(filePath: string | null): Promise<string | null> {
+    const supabase = await this.getClient();
+    if (!supabase || !filePath) return null;
+    const { data, error } = await supabase.storage.from(this.bucket).createSignedUrl(filePath, 3600);
+    return error ? null : data.signedUrl;
+  }
+
   async getOpenPlantao(): Promise<Plantao | null> {
+    const supabase = await this.getClient();
     if (!supabase) {
       throw new Error('Supabase não está configurado.');
     }
 
-    const userId = await this.getUserId();
+    const userId = await this.getUserId(supabase);
 
     const { data, error } = await supabase
       .from('plantoes')
@@ -64,11 +90,12 @@ export class PlantaoService {
   }
 
   async startPlantao(dataHoraInicio: string): Promise<Plantao> {
+    const supabase = await this.getClient();
     if (!supabase) {
       throw new Error('Supabase não está configurado.');
     }
 
-    const userId = await this.getUserId();
+    const userId = await this.getUserId(supabase);
 
     const plantaoAberto = await this.getOpenPlantao();
 
@@ -94,11 +121,12 @@ export class PlantaoService {
   }
 
   async finishPlantao(plantaoId: string, dataHoraFim: string): Promise<void> {
+    const supabase = await this.getClient();
     if (!supabase) {
       throw new Error('Supabase não está configurado.');
     }
 
-    const userId = await this.getUserId();
+    const userId = await this.getUserId(supabase);
 
     const { data: atendimentoAberto, error: atendimentoError } = await supabase
       .from('atendimentos')
@@ -130,11 +158,12 @@ export class PlantaoService {
   }
 
   async getOpenAtendimento(plantaoId: string): Promise<Atendimento | null> {
+    const supabase = await this.getClient();
     if (!supabase) {
       throw new Error('Supabase não está configurado.');
     }
 
-    const userId = await this.getUserId();
+    const userId = await this.getUserId(supabase);
 
     const { data, error } = await supabase
       .from('atendimentos')
@@ -153,11 +182,12 @@ export class PlantaoService {
   }
 
   async uploadPhoto(photo: File, plantaoId: string): Promise<string> {
+    const supabase = await this.getClient();
     if (!supabase) {
       throw new Error('Supabase não está configurado.');
     }
 
-    const userId = await this.getUserId();
+    const userId = await this.getUserId(supabase);
     const extension = photo.name.split('.').pop()?.toLowerCase() || 'jpg';
     const fileName = `${crypto.randomUUID()}.${extension}`;
     const filePath = `${userId}/${plantaoId}/${fileName}`;
@@ -182,11 +212,12 @@ export class PlantaoService {
     fotoEntrada: string,
     justificativa: string | null,
   ): Promise<Atendimento> {
+    const supabase = await this.getClient();
     if (!supabase) {
       throw new Error('Supabase não está configurado.');
     }
 
-    const userId = await this.getUserId();
+    const userId = await this.getUserId(supabase);
 
     const atendimentoAberto = await this.getOpenAtendimento(plantaoId);
 
@@ -219,11 +250,12 @@ export class PlantaoService {
     fotoSaida: string,
     justificativa: string | null,
   ): Promise<void> {
+    const supabase = await this.getClient();
     if (!supabase) {
       throw new Error('Supabase não está configurado.');
     }
 
-    const userId = await this.getUserId();
+    const userId = await this.getUserId(supabase);
 
     const { error } = await supabase
       .from('atendimentos')
@@ -243,6 +275,7 @@ export class PlantaoService {
   }
 
   async deletePhoto(filePath: string): Promise<void> {
+    const supabase = await this.getClient();
     if (!supabase) return;
 
     const { error } = await supabase.storage

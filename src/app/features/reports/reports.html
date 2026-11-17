@@ -1,0 +1,129 @@
+<section class="reports-screen screen-scroll">
+    <div class="month-select">
+      <span class="month-icon">
+        <svg lucideCalendarDays class="ui-icon"></svg>
+      </span>
+      <span class="month-label">{{ vm.monthLabel() }}</span>
+      <button aria-label="Mês anterior" (click)="vm.changeMonth(-1)">
+        <svg lucideChevronLeft class="ui-icon"></svg>
+      </button>
+      <button aria-label="Próximo mês" (click)="vm.changeMonth(1)">
+        <svg lucideChevronRight class="ui-icon"></svg>
+      </button>
+    </div>
+
+    <article class="report-card">
+      <div class="report-title">
+        <span class="report-document">
+          <svg lucideFileText class="ui-icon"></svg>
+        </span>
+        <div>
+          <small>RESUMO DO PERÍODO</small>
+          <h2>Relatório de Plantões</h2>
+          @if (vm.profileName()) { <strong>{{ vm.profileName() }}</strong> }
+          <span>{{ vm.crtrDisplay() }}</span>
+        </div>
+      </div>
+
+      <div class="report-divider"></div>
+
+      <div class="report-stat">
+        <span class="report-stat-icon">
+          <svg lucideCalendarDays class="ui-icon"></svg>
+        </span>
+        <span>Registros no período<strong>{{ vm.recordCount() }}</strong></span>
+      </div>
+
+      <div class="report-stat">
+        <span class="report-stat-icon">
+          <svg lucideClock3 class="ui-icon"></svg>
+        </span>
+        <span>Total de horas<strong>{{ vm.reportHours() }}</strong></span>
+      </div>
+
+      <small class="report-disclaimer">
+        Os relatórios ficam disponíveis após o primeiro registro no período.
+      </small>
+    </article>
+
+    <div class="report-actions">
+      <button class="button-primary report-action" [disabled]="!vm.visibleRecords().length" (click)="printReport(false)">
+        <svg lucidePrinter class="ui-icon"></svg>
+        <span>Imprimir Relatório<small>Resumo</small></span>
+      </button>
+
+      <button class="button-outline report-action" [disabled]="!vm.visibleRecords().length" (click)="printReport(true)">
+        <svg lucidePrinter class="ui-icon"></svg>
+        <span>Imprimir com Fotografias<small>Relatório Completo</small></span>
+      </button>
+    </div>
+
+    <section class="print-document" [class.with-photos]="vm.includePhotosInPrint()">
+      <header class="print-header">
+        <div class="print-brand">MEU PLANTÃO <span>– RADIOLOGIA</span></div>
+        <h1>Relatório de Plantões</h1>
+        <div class="print-identification">
+          @if (vm.profileName()) { <p><strong>Profissional:</strong> {{ vm.profileName() }}</p> }
+          @if (vm.crtrValue()) { <p><strong>CRTR:</strong> {{ vm.crtrDisplay() }}</p> }
+          @if (vm.workplaceValue()) { <p><strong>Local de trabalho:</strong> {{ vm.workplaceValue() }}</p> }
+          <p><strong>Período:</strong> {{ vm.monthLabel() }}</p>
+          <p><strong>Gerado em:</strong> {{ generatedAt }}</p>
+        </div>
+      </header>
+
+      <section class="print-summary" aria-label="Resumo do período">
+        <h2>Resumo do período</h2>
+        <div class="print-summary-grid">
+          <div><span>Registros</span><strong>{{ vm.recordCount() }}</strong></div>
+          <div><span>Plantões</span><strong>{{ vm.reportPlantaoCount() }}</strong></div>
+          <div><span>Total de horas</span><strong>{{ vm.reportHours() }}</strong></div>
+          <div><span>Período</span><strong>{{ vm.monthLabel() }}</strong></div>
+        </div>
+      </section>
+
+      <section class="print-events">
+        <h2>Registros em ordem cronológica</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>Data</th>
+              <th>Horário</th>
+              <th>Tipo</th>
+              <th>Justificativa</th>
+              @if (vm.includePhotosInPrint()) { <th>Fotografia do registro</th> }
+            </tr>
+          </thead>
+          <tbody>
+            @for (record of chronologicalRecords(); track record.id) {
+            <tr>
+              <td>{{ vm.formatDate(record.occurredAt) }}</td>
+              <td>{{ vm.formatTime(record.occurredAt) }}</td>
+              <td>{{ record.kind }}</td>
+              <td>{{ record.reason || '—' }}</td>
+              @if (vm.includePhotosInPrint()) {
+              <td class="print-photo-cell">
+                @if (record.photoUrl && !hasPhotoFailed(record)) {
+                <figure>
+                  <img [src]="record.photoUrl" [alt]="'Fotografia de ' + record.kind + ' em ' + vm.formatDate(record.occurredAt) + ' às ' + vm.formatTime(record.occurredAt)" (error)="photoFailed(record)" />
+                  <figcaption>{{ record.kind }} · {{ vm.formatDate(record.occurredAt) }} · {{ vm.formatTime(record.occurredAt) }}</figcaption>
+                </figure>
+                } @else {
+                <span>{{ record.photoName ? 'Fotografia vinculada indisponível' : 'Sem fotografia vinculada' }}</span>
+                }
+              </td>
+              }
+            </tr>
+            }
+          </tbody>
+        </table>
+      </section>
+
+      <footer class="print-footer">Meu Plantão – Radiologia · Relatório emitido em {{ generatedAt }}</footer>
+    </section>
+
+    @if (!vm.visibleRecords().length) {
+    <p class="report-empty-note">
+      A impressão fica disponível quando houver registros no mês selecionado.
+    </p>
+    }
+  </section>

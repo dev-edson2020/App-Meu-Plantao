@@ -1,0 +1,151 @@
+
+/* Shared styles extracted from global stylesheet. */
+
+
+/* Cadastro profissional */
+.profile-screen {
+  display: flex;
+  flex-direction: column;
+  gap: 13px;
+  padding: 17px 17px max(22px, env(safe-area-inset-bottom));
+  background: radial-gradient(ellipse at 50% 0%, rgba(22, 99, 132, .19), transparent 40%), linear-gradient(180deg, #091e30, #071a2b 56%, #081b2c);
+}
+
+
+.profile-intro {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: linear-gradient(115deg, rgba(16, 53, 77, .92), rgba(10, 35, 56, .97));
+}
+
+
+.profile-avatar {
+  display: grid;
+  flex: 0 0 45px;
+  width: 45px;
+  height: 45px;
+  place-items: center;
+  border: 1px solid rgba(106, 202, 218, .23);
+  border-radius: 15px;
+  background: rgba(30, 115, 142, .2);
+  color: #85dce6;
+}
+
+
+.profile-avatar .ui-icon {
+  width: 22px;
+  height: 22px;
+}
+
+
+.profile-intro p {
+  margin: 0;
+  color: #d9e8ee;
+  font-size: 13px;
+  font-weight: 620;
+}
+
+
+.profile-fields {
+  display: grid;
+  gap: 11px;
+}
+
+
+.profile-field {
+  display: grid;
+  gap: 7px;
+}
+
+
+.profile-field>span {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #b9ccd6;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+
+.profile-field>span .ui-icon {
+  width: 16px;
+  height: 16px;
+  color: #7bd7e2;
+}
+
+
+.profile-field input {
+  width: 100%;
+  min-width: 0;
+  min-height: 51px;
+  padding: 0 13px;
+  border: 1px solid rgba(111, 169, 195, .21);
+  border-radius: 13px;
+  background: linear-gradient(110deg, rgba(16, 48, 71, .91), rgba(11, 35, 55, .97));
+  color: #f1f7f9;
+  font-size: 14px;
+  box-shadow: inset 0 1px rgba(255, 255, 255, .025);
+}
+
+
+.profile-field input::placeholder {
+  color: #829aa8;
+}
+
+
+.profile-save {
+  margin-top: 3px;
+  min-height: 51px;
+}
+
+
+.profile-field input.field-invalid {
+  border: 1px solid #ef4444 !important;
+  box-shadow: 0 0 0 1px rgba(239, 68, 68, 0.12);
+}
+
+
+.profile-field input.field-invalid:focus {
+  outline: none;
+  border-color: #ef4444 !important;
+  box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.15);
+}
+
+
+.profile-screen .profile-fields .profile-field input.field-invalid,
+.profile-screen .profile-fields .profile-field input.field-invalid:focus {
+  border: 1px solid #ef4444 !important;
+  border-color: #ef4444 !important;
+  outline: none !important;
+  box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.2) !important;
+}
+
+
+/* Screen-specific breakpoints retained from the existing layout. */
+@media (max-width:500px) {
+
+
+  .form-screen,
+  .records-screen,
+  .reports-screen,
+  .profile-screen {
+    padding-right: 14px;
+    padding-left: 14px;
+  }
+}
+@media (max-width:370px) {
+
+
+  .form-screen,
+  .records-screen,
+  .reports-screen,
+  .profile-screen {
+    padding-right: 12px;
+    padding-left: 12px;
+  }
+}

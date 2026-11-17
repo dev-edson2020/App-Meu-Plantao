@@ -1,4 +1,4 @@
-import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import type { SupabaseClient } from '@supabase/supabase-js';
 
 declare global {
   interface Window {
@@ -9,17 +9,20 @@ declare global {
   }
 }
 
-const runtimeConfig = typeof window === 'undefined' ? undefined : window.__MEU_PLANTAO_CONFIG__;
+let clientPromise: Promise<SupabaseClient | null> | undefined;
 
-/**
- * Cliente público opcional: fica indisponível até a configuração do projeto Supabase.
- * A chave anon é pública por desenho e só é segura com RLS; service_role nunca vai ao browser.
- */
-export const supabase: SupabaseClient | null =
-  runtimeConfig?.supabaseUrl && runtimeConfig.supabaseAnonKey
-    ? createClient(runtimeConfig.supabaseUrl, runtimeConfig.supabaseAnonKey, {
+/** Load and cache the existing browser client only when a Supabase operation is needed. */
+export function getSupabase(): Promise<SupabaseClient | null> {
+  if (!clientPromise) {
+    clientPromise = (async () => {
+      const config = typeof window === 'undefined' ? undefined : window.__MEU_PLANTAO_CONFIG__;
+      if (!config?.supabaseUrl || !config.supabaseAnonKey) return null;
+
+      const { createClient } = await import('@supabase/supabase-js');
+      return createClient(config.supabaseUrl, config.supabaseAnonKey, {
         auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true },
-      })
-    : null;
-
-export const isSupabaseConfigured = supabase !== null;
+      });
+    })();
+  }
+  return clientPromise;
+}

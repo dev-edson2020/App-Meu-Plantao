@@ -1,0 +1,118 @@
+<section class="records-screen screen-scroll">
+    <div class="month-select">
+      <span class="month-icon">
+        <svg lucideCalendarDays class="ui-icon"></svg>
+      </span>
+      <span class="month-label">{{ vm.monthLabel() }}</span>
+      <button aria-label="Mês anterior" (click)="vm.changeMonth(-1)">
+        <svg lucideChevronLeft class="ui-icon"></svg>
+      </button>
+      <button aria-label="Próximo mês" (click)="vm.changeMonth(1)">
+        <svg lucideChevronRight class="ui-icon"></svg>
+      </button>
+    </div>
+
+    @if (vm.recordsLoading()) {
+      <div class="history-state" role="status">Carregando registros&#8230;</div>
+    } @else if (vm.recordsError()) {
+      <div class="history-state" role="alert"><strong>Não foi possível carregar os registros.</strong><button class="button-outline" type="button" (click)="vm.loadRecords()">Tentar novamente</button></div>
+    } @else if (vm.visibleRecords().length === 0) {
+    <div class="empty-state">
+      <span class="empty-clock">
+        <svg lucideClock3 class="ui-icon"></svg>
+      </span>
+      <strong>Nenhum registro neste mês</strong>
+      <p>Seus registros de entrada e saída aparecerão aqui.</p>
+      <button class="button-outline" (click)="vm.go('register')">
+        Registrar ponto
+      </button>
+    </div>
+    } @else {
+    <div class="record-list">
+      @for (record of vm.visibleRecords(); track record.id) {
+      <button class="record-row" type="button" (click)="openDetails(record)"
+        [attr.aria-label]="'Ver detalhes: ' + record.kind + ', ' + vm.formatDate(record.occurredAt) + ' às ' + vm.formatTime(record.occurredAt)">
+        <span class="record-day">
+          <strong>{{ record.occurredAt | date:'dd':'America/Sao_Paulo' }}</strong>
+          <small>{{ record.occurredAt | date:'EEE':'America/Sao_Paulo' }}</small>
+        </span>
+
+        <span class="record-info">
+          <strong>
+            {{ vm.formatTime(record.occurredAt) }}
+            <i></i>
+            {{ record.kind }}
+          </strong>
+          <small>
+            {{ vm.formatDate(record.occurredAt) }}
+            @if (record.reason) {
+            <span> · {{ record.reason }}</span>
+            }
+          </small>
+          @if (record.photoName) {
+          <small class="photo-tag">
+            <svg lucideImage class="ui-icon"></svg>
+            {{ record.photoName }}
+          </small>
+          }
+        </span>
+
+        <span class="record-check">
+          <svg lucideCheck class="ui-icon"></svg>
+        </span>
+        <svg lucideChevronRight class="record-chevron"></svg>
+      </button>
+      }
+    </div>
+
+    <article class="total-card">
+      <span class="total-icon">
+        <svg lucideClock3 class="ui-icon"></svg>
+      </span>
+      <div>
+        <span>Total no mês</span>
+        <strong>{{ vm.reportHours() }}</strong>
+      </div>
+    </article>
+    }
+
+    @if (selectedRecord(); as record) {
+    <div class="record-detail-backdrop" (click)="closeDetails()">
+      <section class="record-detail-dialog" role="dialog" aria-modal="true" aria-labelledby="record-detail-title" (click)="$event.stopPropagation()">
+        <header class="record-detail-header">
+          <div>
+            <span>DETALHES DO REGISTRO</span>
+            <h2 id="record-detail-title">{{ record.kind }}</h2>
+          </div>
+          <button class="record-detail-close" type="button" aria-label="Fechar detalhes" (click)="closeDetails()">
+            <svg lucideX class="ui-icon"></svg>
+          </button>
+        </header>
+
+        <dl class="record-detail-data">
+          <div><dt>Tipo</dt><dd>{{ record.kind }}</dd></div>
+          <div><dt>Data</dt><dd>{{ vm.formatDate(record.occurredAt) }}</dd></div>
+          <div><dt>Horário</dt><dd>{{ vm.formatTime(record.occurredAt) }}</dd></div>
+          @if (record.reason) {
+          <div class="record-detail-reason"><dt>Justificativa</dt><dd>{{ record.reason }}</dd></div>
+          }
+        </dl>
+
+        <div class="record-detail-photo">
+          <h3>Fotografia</h3>
+          @if (record.photoUrl && !photoLoadFailed()) {
+          <img [src]="record.photoUrl" [alt]="'Fotografia do registro de ' + record.kind" (error)="photoLoadFailed.set(true)" />
+          } @else if (record.photoName) {
+          <p class="record-photo-message" role="status">
+            <svg lucideImage class="ui-icon"></svg>
+            {{ photoLoadFailed() || !record.photoUrl ? 'Não foi possível carregar a fotografia vinculada.' : 'Fotografia indisponível.' }}
+          </p>
+          } @else {
+          <p class="record-photo-message">Este registro não possui fotografia vinculada.</p>
+          }
+          @if (record.photoName) { <small>{{ record.photoName }}</small> }
+        </div>
+      </section>
+    </div>
+    }
+  </section>

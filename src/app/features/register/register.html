@@ -1,0 +1,103 @@
+<section class="form-screen screen-scroll">
+
+    <div class="register-intro" [class.is-exit]="!!vm.activeAtendimento()">
+
+      <h2>
+        {{ vm.activeAtendimento() ? 'Registrar Saída' : 'Registrar Entrada' }}
+      </h2>
+
+      @if (vm.activeAtendimento()) {
+      <span class="register-indicator">
+        <i></i>
+        ATENDIMENTO EM ANDAMENTO
+      </span>
+      }
+    </div>
+
+    <div class="clock-display">
+      <span class="clock-label">HORÁRIO ATUAL</span>
+
+      <strong class="clock-time">
+        {{ vm.clockNow() | date:'HH:mm:ss':'America/Sao_Paulo' }}
+      </strong>
+
+      <small class="clock-date">
+        {{ vm.clockNow() | date:'dd/MM/yyyy':'America/Sao_Paulo' }}
+      </small>
+    </div>
+
+    @if (vm.capturedAt()) {
+    <div class="captured-time">
+      <svg lucideCheck class="ui-icon"></svg>
+      {{ vm.recordKind() }} selecionada às
+      {{ vm.capturedAt() | date:'HH:mm:ss':'America/Sao_Paulo' }}
+    </div>
+    }
+
+
+    <div class="camera-frame" [class.camera-active]="cameraOpen()">
+      <span class="scan-corner corner-a"></span>
+      <span class="scan-corner corner-b"></span>
+      <span class="scan-corner corner-c"></span>
+      <span class="scan-corner corner-d"></span>
+
+      @if (cameraOpen()) {
+      <video #cameraVideo class="camera-live" autoplay playsinline muted aria-label="Imagem ao vivo da câmera"></video>
+      } @else if (vm.photoPreviewUrl) {
+      <img class="photo-preview" [src]="vm.photoPreviewUrl" alt="Prévia da fotografia do registro" />
+      } @else {
+      <button class="camera-placeholder" type="button" (click)="openCamera()">
+        <span class="camera-symbol">
+          <svg lucideCamera class="ui-icon"></svg>
+        </span>
+        <strong>Tirar foto</strong>
+        <small>Toque aqui para abrir a câmera</small>
+      </button>
+      }
+    </div>
+    <input #galleryPhoto id="clock-gallery" type="file" accept="image/*" hidden
+      (click)="vm.captureCurrentAction()" (change)="photoChanged($event)" />
+    @if(cameraError()){<app-field-error [message]="cameraError()" />}
+    @if(photoError()){<app-field-error [message]="photoError()" />}
+
+    <div class="capture-tools">
+      <label class="capture-choice gallery-choice" for="clock-gallery">
+        <svg lucideImage class="ui-icon"></svg>
+        {{ vm.photoPreviewUrl ? 'Escolher outra foto' : 'Escolher da galeria' }}
+      </label>
+
+      @if (cameraOpen()) {
+      <button class="capture-choice camera-choice" type="button" (click)="takePhoto()">
+        <svg lucideCamera class="ui-icon"></svg>
+        Capturar foto
+      </button>
+      <button class="capture-choice remove-photo" type="button" (click)="closeCamera()">
+        <svg lucideX class="ui-icon"></svg>
+        Fechar cÃ¢mera
+      </button>
+      } @else if (vm.photoPreviewUrl) {
+      <button class="capture-choice camera-choice" type="button" (click)="openCamera()">
+        <svg lucideCamera class="ui-icon"></svg>
+        Tirar novamente
+      </button>
+      <button class="capture-choice remove-photo" type="button" (click)="removePhoto(galleryPhoto)">
+        <svg lucideX class="ui-icon"></svg>
+        Remover foto
+      </button>
+      }
+    </div>
+
+    <label class="text-area-wrap">
+      <span>
+        <svg lucidePencil class="ui-icon"></svg>
+        Justificativa <small>(opcional)</small>
+      </span>
+      <textarea name="reason" placeholder="Descreva o motivo, se necessário" [(ngModel)]="vm.reasonValue"></textarea>
+    </label>
+
+    <button class="button-primary save-button" [disabled]="!vm.capturedAt() || vm.recordSaving()" (click)="save()">
+      <svg lucideCheck class="ui-icon"></svg>
+      {{ vm.recordSaving() ? 'Salvando...' : 'Salvar Registro' }}
+    </button>
+
+  </section>

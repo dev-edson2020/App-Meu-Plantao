@@ -1,0 +1,25 @@
+<section class="welcome-screen screen-scroll signup-active">
+  <div class="welcome-radiograph" aria-hidden="true"></div>
+  <header class="auth-visual"><div class="welcome-brand"><h1>Meu Plant&#227;o</h1><div class="brand-subtitle">RADIOLOGIA</div></div><p class="welcome-description">Controle de plant&#245;es, horas e registros de ponto.</p></header>
+  <div class="auth-content"><div class="auth-heading"><h2>Criar conta</h2></div>
+    <form class="auth-form" (ngSubmit)="submit()" novalidate>
+      @if (step() === 0) {
+        <div #signupFields class="signup-fields">
+          <label class="auth-field"><span>Nome completo</span><span class="input-shell"><svg lucideUserRound class="ui-icon"></svg><input name="signupName" autocomplete="name" placeholder="Seu nome completo" [ngModel]="auth.signupName" (ngModelChange)="auth.signupName = $event; clearError('name')" required /></span>@if(errors()['name']){<app-field-error [message]="errors()['name']" />}</label>
+          <label class="auth-field"><span>N&#250;mero do CRTR</span><span class="input-shell"><input name="signupCrtr" placeholder="N&#250;mero" [ngModel]="auth.signupCrtr" (ngModelChange)="auth.signupCrtr = $event; clearError('crtr')" required /></span>@if(errors()['crtr']){<app-field-error [message]="errors()['crtr']" />}</label>
+          <label class="auth-field"><span>Hospital ou cl&#237;nica</span><span class="input-shell"><svg lucideBuilding class="ui-icon"></svg><input name="signupWorkplace" placeholder="Local de trabalho" [ngModel]="auth.signupWorkplace" (ngModelChange)="auth.signupWorkplace = $event; clearError('workplace')" required /></span>@if(errors()['workplace']){<app-field-error [message]="errors()['workplace']" />}</label>
+        </div>
+        <button class="button-primary auth-submit" type="submit">Continuar <svg lucideArrowRight class="ui-icon"></svg></button>
+      } @else {
+        <div #signupFields class="signup-fields">
+          <label class="auth-field"><span>E-mail</span><span class="input-shell"><svg lucideMail class="ui-icon"></svg><input name="signupEmail" type="email" inputmode="email" placeholder="seu@email.com" autocomplete="email" [ngModel]="auth.email()" (ngModelChange)="auth.email.set($event); clearError('email')" required /></span>@if(errors()['email']){<app-field-error [message]="errors()['email']" />}</label>
+          <label class="auth-field"><span>Senha</span><span class="input-shell"><svg lucideLockKeyhole class="ui-icon"></svg><input name="signupPassword" type="password" placeholder="Crie uma senha" autocomplete="new-password" [ngModel]="auth.signupPassword" (ngModelChange)="auth.signupPassword = $event; clearError('password')" required /></span>@if(errors()['password']){<app-field-error [message]="errors()['password']" />}</label>
+          <label class="auth-field"><span>Confirmar senha</span><span class="input-shell"><svg lucideLockKeyhole class="ui-icon"></svg><input name="confirmPassword" type="password" placeholder="Digite a senha novamente" autocomplete="new-password" [ngModel]="auth.signupConfirmation" (ngModelChange)="auth.signupConfirmation = $event; clearError('confirmation')" required /></span>@if(errors()['confirmation']){<app-field-error [message]="errors()['confirmation']" />}</label>
+        </div>
+        <button class="signup-back" type="button" (click)="back()">Voltar aos dados profissionais</button>
+        <button class="button-primary auth-submit" type="submit" [disabled]="auth.busy()"><svg lucideCheck class="ui-icon"></svg>Criar conta</button>
+      }
+    </form>
+    <button class="button-outline auth-alternate" type="button" (click)="auth.show('login')">J&#225; tenho conta</button>
+  </div>
+</section>

@@ -1,0 +1,76 @@
+<section class="home-screen screen-scroll">
+    <article class="user-summary">
+      <span class="user-avatar">
+        <svg lucideUserRound class="ui-icon"></svg>
+      </span>
+      <div>
+        <small>PERFIL</small>
+        <strong>{{ vm.profileName() }}</strong>
+        <span>{{ vm.crtrDisplay() }}</span>
+      </div>
+      <button class="profile-shortcut" aria-label="Abrir meu cadastro" (click)="vm.go('profile')">
+        <svg lucideArrowRight class="ui-icon"></svg>
+      </button>
+    </article>
+
+    <div class="home-stats">
+      <article class="small-stat">
+        <span class="stat-icon">
+          <svg lucideCalendarDays class="ui-icon"></svg>
+        </span>
+        <div>
+          <span>Plantões no mês</span>
+          <strong>{{ vm.plantaoCount() }}</strong>
+        </div>
+      </article>
+
+      <article class="small-stat stat-hours">
+        <span class="stat-icon">
+          <svg lucideClock3 class="ui-icon"></svg>
+        </span>
+        <div>
+          <span>Total de horas</span>
+          <strong>{{ vm.currentMonthHours() }}</strong>
+        </div>
+      </article>
+    </div>
+
+    <div class="section-heading">
+      <span>Acesso rápido</span>
+      <small>Suas ferramentas</small>
+    </div>
+
+    <div class="action-grid">
+      <button class="action-card action-register" (click)="vm.go('register')">
+        <span class="action-icon">
+          <svg lucideCamera class="ui-icon"></svg>
+        </span>
+        <span>Registrar Ponto</span>
+        <svg lucideArrowRight class="action-arrow"></svg>
+      </button>
+
+      <button class="action-card" (click)="vm.go('records')">
+        <span class="action-icon">
+          <svg lucideListChecks class="ui-icon"></svg>
+        </span>
+        <span>Meus Registros</span>
+        <svg lucideArrowRight class="action-arrow"></svg>
+      </button>
+
+      <button class="action-card" (click)="vm.go('reports')">
+        <span class="action-icon">
+          <svg lucideChartNoAxesColumnIncreasing class="ui-icon"></svg>
+        </span>
+        <span>Relatórios</span>
+        <svg lucideArrowRight class="action-arrow"></svg>
+      </button>
+
+      <button class="action-card" (click)="vm.go('profile')">
+        <span class="action-icon">
+          <svg lucideUserRound class="ui-icon"></svg>
+        </span>
+        <span>Meu Cadastro</span>
+        <svg lucideArrowRight class="action-arrow"></svg>
+      </button>
+    </div>
+  </section>
