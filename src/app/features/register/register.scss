@@ -364,6 +364,17 @@
   border-radius: 16px;
 }
 
+.save-button:disabled,
+.save-button:disabled:hover {
+  border-color: rgba(111, 148, 166, .2);
+  background: linear-gradient(110deg, #294254, #20384a);
+  color: #a1b1ba;
+  box-shadow: none;
+  opacity: .72;
+  filter: none;
+  transform: none;
+}
+
 
 
 /* Card centralizado de Entrada e Saída */

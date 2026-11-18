@@ -4,9 +4,23 @@ import type { TimeRecord } from '../../core/app-state.service';
 import type { OfflineOperation } from '../../core/offline-sync.service';
 import { DatePipe } from '@angular/common';
 import { LucideCalendarDays, LucideChevronLeft, LucideChevronRight, LucideCheck, LucideClock3, LucideImage, LucideX } from '@lucide/angular';
+const APP_MONTH_FORMATTER = new Intl.DateTimeFormat('en-US', {
+  timeZone: 'America/Sao_Paulo',
+  year: 'numeric',
+  month: 'numeric',
+});
+
 @Component({ selector: 'app-records', standalone: true, imports: [DatePipe, LucideCalendarDays, LucideChevronLeft, LucideChevronRight, LucideCheck, LucideClock3, LucideImage, LucideX], templateUrl: './records.html', styleUrl: './records.scss' })
 export class RecordsComponent {
   readonly vm = inject(AppState);
+  readonly selectedMonthIsPast = computed(() => {
+    const currentParts = APP_MONTH_FORMATTER.formatToParts(this.vm.clockNow());
+    const currentYear = Number(currentParts.find(part => part.type === 'year')?.value);
+    const currentMonth = Number(currentParts.find(part => part.type === 'month')?.value) - 1;
+    const selectedMonthIndex = this.vm.selectedYear() * 12 + this.vm.selectedMonth();
+    const currentMonthIndex = currentYear * 12 + currentMonth;
+    return selectedMonthIndex < currentMonthIndex;
+  });
   readonly selectedRecord = signal<TimeRecord | null>(null);
   readonly selectedOperation = computed(() => {
     const operationId = this.selectedRecord()?.localOperationId;

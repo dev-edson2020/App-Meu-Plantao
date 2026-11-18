@@ -31,7 +31,7 @@
       </span>
       <strong>Nenhum registro neste mês</strong>
       <p>Seus registros de entrada e saída aparecerão aqui.</p>
-      <button class="button-outline" (click)="vm.go('register')">
+      <button class="button-outline" type="button" [disabled]="selectedMonthIsPast()" (click)="vm.go('register')">
         Registrar ponto
       </button>
     </div>

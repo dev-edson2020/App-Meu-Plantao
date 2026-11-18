@@ -186,7 +186,7 @@
 
 .home-header .header-photo,
 .home-header::after {
-  height: 132px;
+  height: 84px;
 }
 
 .home-header .header-photo {
@@ -196,10 +196,11 @@
 .home-header .screen-heading {
   position: absolute;
   z-index: 3;
-  left: 24px;
-  bottom: 15px;
+  left: 20px;
+  right: 88px;
+  bottom: 7px;
   display: grid;
-  gap: 5px;
+  gap: 4px;
   text-align: left;
   text-shadow: 0 2px 12px rgba(0, 0, 0, .75);
 }
@@ -208,7 +209,7 @@
   margin: 0;
   color: #f6fafc;
   font-family: var(--font-ui);
-  font-size: 25px;
+  font-size: 23px;
   font-weight: 700;
   letter-spacing: -.65px;
   line-height: 1;
@@ -279,16 +280,17 @@ button:focus-visible {
 
   .home-header .header-photo,
   .home-header::after {
-    height: 116px;
+    height: 74px;
   }
 
   .home-header .screen-heading {
-    left: 18px;
-    bottom: 13px;
+    left: 14px;
+    right: 78px;
+    bottom: 6px;
   }
 
   .home-header .screen-heading h1 {
-    font-size: 22px;
+    font-size: 20px;
   }
 
   .home-header .screen-heading span {
@@ -323,8 +325,8 @@ button:focus-visible {
     min-height: 96px;
   }
 
-  .home-header,
+  .home-header { height: 96px; }
   .home-header .header-photo,
-  .home-header::after { height: 96px; }
-  .home-header .screen-heading { bottom: 11px; }
+  .home-header::after { height: 52px; }
+  .home-header .screen-heading { bottom: 5px; }
 }

@@ -66,6 +66,18 @@
   font-size: 12px;
 }
 
+.empty-state .button-outline:disabled,
+.empty-state .button-outline:disabled:hover {
+  border-color: rgba(117, 148, 164, .18);
+  background: rgba(15, 37, 54, .68);
+  color: #8195a1;
+  box-shadow: none;
+  opacity: .58;
+  filter: none;
+  cursor: not-allowed;
+  transform: none;
+}
+
 
 .record-list {
   display: grid;

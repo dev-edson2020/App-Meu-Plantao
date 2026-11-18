@@ -95,7 +95,7 @@
       <textarea name="reason" placeholder="Descreva o motivo, se necessário" [(ngModel)]="vm.reasonValue"></textarea>
     </label>
 
-    <button class="button-primary save-button" [disabled]="!vm.capturedAt() || vm.recordSaving()" (click)="save()">
+    <button class="button-primary save-button" [disabled]="!vm.capturedAt() || !vm.selectedPhoto || vm.recordSaving()" (click)="save()">
       <svg lucideCheck class="ui-icon"></svg>
       {{ vm.recordSaving() ? 'Salvando...' : 'Salvar Registro' }}
     </button>

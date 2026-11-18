@@ -718,6 +718,35 @@ textarea:focus-visible {
   content: "";
 }
 
+.app-shell:has(.home-screen) .bottom-nav {
+  min-height: 82px;
+  padding-top: 7px;
+}
+
+.app-shell:has(.home-screen) .bottom-nav button {
+  min-height: 54px;
+  gap: 5px;
+  border-radius: 14px;
+  color: #a3b8c4;
+  font-size: 11px;
+  font-weight: 600;
+  transition: color .16s, background .16s, transform .16s;
+}
+
+.app-shell:has(.home-screen) .bottom-nav .ui-icon {
+  width: 22px;
+  height: 22px;
+}
+
+.app-shell:has(.home-screen) .bottom-nav button:active {
+  transform: scale(.96);
+  background: rgba(35, 112, 142, .2);
+}
+
+.app-shell:has(.home-screen) .bottom-nav button.active {
+  color: #78e1e9;
+}
+
 
 .toast {
   z-index: 4;
