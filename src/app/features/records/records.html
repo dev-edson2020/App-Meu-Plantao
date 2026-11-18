@@ -2,7 +2,7 @@
     @if (vm.offlineSync.pendingCount() > 0) {
     <aside class="offline-queue" aria-live="polite">
       <span>{{ vm.offlineSync.pendingCount() }} registro(s) aguardando ou em sincronização</span>
-      <button type="button" class="button-outline" [disabled]="!vm.offlineSync.online() || vm.offlineSync.syncing()" (click)="vm.offlineSync.syncNow()">
+      <button type="button" class="button-outline" [disabled]="!vm.offlineSync.online() || vm.offlineSync.syncing()" (click)="vm.offlineSync.syncNow(undefined, undefined, true)">
         {{ vm.offlineSync.syncing() ? 'Sincronizando…' : 'Tentar sincronizar' }}
       </button>
     </aside>

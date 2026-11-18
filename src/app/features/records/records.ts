@@ -68,7 +68,7 @@ export class RecordsComponent {
     const userId = this.vm.auth.currentUserId();
     if (!record?.localOperationId || !operation || !userId || operation.status === 'synced' || operation.status === 'syncing') return;
     this.syncActionMessage.set('');
-    const result = await this.vm.offlineSync.syncNow(userId, operation.id);
+    const result = await this.vm.offlineSync.syncNow(userId, operation.id, true);
     if (result === 'pending') {
       const blocker = await this.vm.offlineSync.getBlockingOperation(userId, operation.id);
       this.syncActionMessage.set(blocker

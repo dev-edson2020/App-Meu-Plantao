@@ -40,6 +40,8 @@ export interface OfflineOperation {
   retryDisposition?: 'automatic' | 'manual';
   nextRetryAt?: string;
   syncedAt?: string;
+  /** Versão do protocolo que confirmou Storage, atendimento e ID remoto. */
+  confirmationVersion?: number;
 }
 
 export interface OfflineContext {
@@ -86,7 +88,7 @@ export class OfflineSyncService {
       const userId = await this.auth.restoreCurrentUserId();
       if (!userId) return;
       await this.refresh(userId, true);
-      if (this.online()) void this.syncNow(userId);
+      if (this.online()) void this.syncNow(userId, undefined, true);
     } catch (error) {
       this.storageError.set(this.errorMessage(error));
     }
@@ -232,7 +234,7 @@ export class OfflineSyncService {
     await this.refresh(userId);
     if (this.online()) {
       onSyncStart?.();
-      await this.syncNow(userId, operation.id);
+      await this.syncNow(userId, operation.id, true);
     } else {
       await this.markNoInternet(operation);
     }
@@ -281,7 +283,7 @@ export class OfflineSyncService {
     await this.refresh(userId);
     if (this.online()) {
       onSyncStart?.();
-      await this.syncNow(userId, operation.id);
+      await this.syncNow(userId, operation.id, true);
     } else {
       await this.markNoInternet(operation);
     }
@@ -312,7 +314,7 @@ export class OfflineSyncService {
     this.operations.set(normalized ? await this.getOperations(userId) : list);
   }
 
-  async syncNow(userId = this.auth.currentUserId() ?? undefined, targetOperationId?: string): Promise<SyncStatus | undefined> {
+  async syncNow(userId = this.auth.currentUserId() ?? undefined, targetOperationId?: string, retryNoInternet = false): Promise<SyncStatus | undefined> {
     if (!userId) return undefined;
     this.refreshConnectionState();
     if (!this.online()) {
@@ -326,6 +328,17 @@ export class OfflineSyncService {
     if (targetOperationId) {
       const target = (await this.getOperations(userId)).find(item => item.id === targetOperationId);
       if (!target || target.status === 'synced') return target?.status;
+    }
+
+    if (retryNoInternet) {
+      const operations = await this.getOperations(userId);
+      for (const operation of operations) {
+        if (operation.status !== 'pending' || operation.syncErrorCode !== 'no-internet') continue;
+        operation.syncError = undefined;
+        operation.syncErrorCode = undefined;
+        operation.nextRetryAt = undefined;
+        await this.putOperation(operation);
+      }
     }
 
     const deadline = Date.now() + INITIAL_SYNC_WAIT_MS;
@@ -383,6 +396,7 @@ export class OfflineSyncService {
           if (operation.status === 'syncing') break;
           if (operation.status !== 'pending' && operation.status !== 'failed') break;
           const selectedManualRetry = operation.id === targetOperationId;
+          if (operation.status === 'pending' && operation.syncErrorCode === 'no-internet' && !selectedManualRetry) break;
           if (operation.status === 'failed') {
             if (operation.retryDisposition === 'manual' && !selectedManualRetry) break;
             if (!selectedManualRetry && operation.retryDisposition !== 'automatic') break;
@@ -412,17 +426,18 @@ export class OfflineSyncService {
           });
           try {
             const result = await this.syncOperation(operation);
-            operation.status = 'synced';
-            operation.syncedAt = new Date().toISOString();
             operation.photoPath = result.photoPath;
-            operation.remoteAttendanceId = result.remoteAttendanceId ?? operation.remoteAttendanceId;
+            operation.remoteAttendanceId = result.remoteAttendanceId;
             operation.syncError = undefined;
             operation.syncErrorCode = undefined;
             operation.retryDisposition = undefined;
             operation.nextRetryAt = undefined;
-            await this.putOperation(operation);
-            if (operation.remoteAttendanceId) await this.persistAttendanceMapping(userId, operation, operation.remoteAttendanceId);
+            await this.persistAttendanceMapping(userId, operation, result.remoteAttendanceId);
             await this.markPlantaoSynced(userId, operation.plantaoId);
+            operation.status = 'synced';
+            operation.syncedAt = new Date().toISOString();
+            operation.confirmationVersion = 1;
+            await this.putOperation(operation);
           } catch (error) {
             console.error('[offline-sync] tentativa falhou', {
               operationId: operation.id,
@@ -433,10 +448,10 @@ export class OfflineSyncService {
               attemptAt,
               error: this.diagnosticError(error),
             });
-            if (!this.online()) {
+            if (!this.online() || this.isCommunicationFailure(error)) {
               operation.status = 'pending';
               operation.syncErrorCode = 'no-internet';
-              operation.syncError = 'Sem conexão com a internet. A operação continua salva no dispositivo.';
+              operation.syncError = 'Sem confirmação do Supabase. A operação continua salva no dispositivo.';
             } else {
               operation.status = 'failed';
               operation.syncErrorCode = this.classifyError(error);
@@ -473,12 +488,18 @@ export class OfflineSyncService {
   }
 
   private async syncOperation(operation: OfflineOperation): Promise<{ photoPath: string; remoteAttendanceId: string }> {
+    this.refreshConnectionState();
+    if (!this.online()) throw new PlantaoServiceError('communication', 'Sem conexão; o envio não foi iniciado.');
     if (!operation.photoBlob) throw new Error('A fotografia local desta operação não está disponível.');
     if (operation.kind === 'Entrada' && operation.createPlantao) {
       await this.plantaoService.startPlantao(operation.occurredAt, operation.plantaoId);
     }
+    this.refreshConnectionState();
+    if (!this.online()) throw new PlantaoServiceError('communication', 'Sem conexão; o envio da fotografia não foi iniciado.');
     const file = new File([operation.photoBlob], operation.photoName, { type: operation.photoType, lastModified: Date.parse(operation.createdAt) });
     const photoPath = await this.plantaoService.uploadPhoto(file, operation.plantaoId, operation.id);
+    this.refreshConnectionState();
+    if (!this.online()) throw new PlantaoServiceError('communication', 'A conexão foi interrompida depois do upload; o atendimento ainda não foi confirmado.');
     let remoteAttendanceId = operation.remoteAttendanceId;
     if (operation.kind === 'Entrada') {
       const atendimento = await this.plantaoService.startAtendimento(operation.plantaoId, operation.occurredAt, photoPath, operation.reason || null, operation.id, operation.localAttendanceId);
@@ -586,7 +607,7 @@ export class OfflineSyncService {
 
   private readonly handleOnline = (): void => {
     this.online.set(true);
-    void this.syncNow();
+    void this.syncNow(undefined, undefined, true);
   };
 
   private readonly handleOffline = (): void => { this.online.set(false); };
@@ -609,6 +630,15 @@ export class OfflineSyncService {
     }
     if (error instanceof TypeError || (error instanceof Error && /failed to fetch|network|timeout|timed out/i.test(error.message))) return true;
     return false;
+  }
+
+  private isCommunicationFailure(error: unknown): boolean {
+    if (error instanceof PlantaoServiceError) {
+      return error.kind === 'communication' ||
+        (error.kind === 'photo-upload' && /falha temporária de comunicação/i.test(error.message));
+    }
+    return error instanceof TypeError ||
+      (error instanceof Error && /failed to fetch|network|timeout|timed out|aborterror/i.test(error.message));
   }
 
   private isTransientStoredFailure(operation: OfflineOperation): boolean {

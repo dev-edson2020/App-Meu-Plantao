@@ -165,7 +165,7 @@ export class AppState implements OnDestroy {
     supabase.auth.onAuthStateChange((event, session) => {
       if (session?.user) {
         this.auth.currentUserId.set(session.user.id);
-        void this.offlineSync.refresh(session.user.id).then(() => this.offlineSync.syncNow(session.user.id));
+        void this.offlineSync.refresh(session.user.id).then(() => this.offlineSync.syncNow(session.user.id, undefined, true));
       }
       if (event === 'PASSWORD_RECOVERY') {
         this.auth.showPasswordUpdate();

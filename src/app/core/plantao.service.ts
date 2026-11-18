@@ -117,6 +117,9 @@ export class PlantaoService {
     if (!idempotencyId) {
       const plantaoAberto = await this.getOpenPlantao();
       if (plantaoAberto) return plantaoAberto;
+    } else {
+      const existing = await this.findIdempotentPlantao(supabase, idempotencyId, userId, dataHoraInicio);
+      if (existing) return existing;
     }
 
     const { data, error } = await supabase
@@ -132,17 +135,32 @@ export class PlantaoService {
 
     if (error || !data) {
       if (idempotencyId) {
-        const { data: existing, error: lookupError } = await supabase
-          .from('plantoes')
-          .select('id, usuario_id, data_hora_inicio, data_hora_fim')
-          .eq('id', idempotencyId)
-          .eq('usuario_id', userId)
-          .maybeSingle();
-        if (!lookupError && existing && existing.data_hora_inicio === dataHoraInicio) return existing;
+        const existing = await this.findIdempotentPlantao(supabase, idempotencyId, userId, dataHoraInicio);
+        if (existing) return existing;
       }
       throw this.apiError('record-write', 'Falha na gravação do plantão.', error);
     }
 
+    return data;
+  }
+
+  private async findIdempotentPlantao(
+    supabase: SupabaseClient,
+    plantaoId: string,
+    userId: string,
+    dataHoraInicio: string,
+  ): Promise<Plantao | null> {
+    const { data, error } = await supabase
+      .from('plantoes')
+      .select('id, usuario_id, data_hora_inicio, data_hora_fim')
+      .eq('id', plantaoId)
+      .maybeSingle();
+
+    if (error) throw this.apiError('record-write', 'Falha ao consultar um plantão já persistido.', error);
+    if (!data) return null;
+    const matches = data.id === plantaoId && data.usuario_id === userId &&
+      new Date(data.data_hora_inicio).getTime() === new Date(dataHoraInicio).getTime() && data.data_hora_fim === null;
+    if (!matches) throw new PlantaoServiceError('record-write', 'O ID idempotente do plantão já existe com dados diferentes.');
     return data;
   }
 
@@ -218,22 +236,30 @@ export class PlantaoService {
     const fileName = `${idempotencyId ?? crypto.randomUUID()}.${extension}`;
     const filePath = `${userId}/${plantaoId}/${fileName}`;
 
-    const { error } = await supabase.storage
+    const { data, error } = await supabase.storage
       .from(this.bucket)
       .upload(filePath, photo, {
         contentType: photo.type,
         upsert: false,
       });
 
-    if (error) {
+    if (error || !data?.path || data.path !== filePath) {
       if (idempotencyId) {
-        const { error: existingError } = await supabase.storage.from(this.bucket).createSignedUrl(filePath, 60);
-        if (!existingError) return filePath;
+        const { data: existing, error: existingError } = await supabase.storage.from(this.bucket).download(filePath);
+        if (!existingError && existing && await this.sameBlob(existing, photo)) return filePath;
       }
       throw this.apiError('photo-upload', 'Falha no upload da fotografia.', error);
     }
 
     return filePath;
+  }
+
+  private async sameBlob(remote: Blob, local: Blob): Promise<boolean> {
+    if (remote.size !== local.size) return false;
+    const [remoteBytes, localBytes] = await Promise.all([remote.arrayBuffer(), local.arrayBuffer()]);
+    const a = new Uint8Array(remoteBytes);
+    const b = new Uint8Array(localBytes);
+    return a.every((value, index) => value === b[index]);
   }
 
   async startAtendimento(
@@ -294,6 +320,14 @@ export class PlantaoService {
       throw this.apiError('record-write', 'Falha na gravação da entrada.', error);
     }
 
+    const remoteId = data.id == null ? '' : String(data.id);
+    const sameEntry = data.plantao_id === plantaoId && data.usuario_id === userId &&
+      new Date(data.data_hora_entrada).getTime() === new Date(dataHoraEntrada).getTime() &&
+      data.foto_entrada === fotoEntrada && (data.justificativa ?? null) === (justificativa || null);
+    if (!/^\d+$/.test(remoteId) || !sameEntry) {
+      throw new PlantaoServiceError('record-write', 'O Supabase não confirmou os dados e o ID BIGINT da entrada.');
+    }
+
     return { ...data, id: String(data.id) };
   }
 
@@ -326,7 +360,7 @@ export class PlantaoService {
       .eq('id', remoteAttendanceId)
       .eq('usuario_id', userId)
       .is('data_hora_saida', null)
-      .select('id')
+      .select('id, data_hora_saida, foto_saida, justificativa')
       .maybeSingle();
 
     this.logAttendanceResponse('PlantaoService.finishAtendimento', {
@@ -346,14 +380,33 @@ export class PlantaoService {
     if (error) {
       throw this.apiError('record-write', 'Falha na gravação da saída.', error);
     }
+    if (data && (String(data.id) !== remoteAttendanceId || data.data_hora_saida !== dataHoraSaida ||
+        data.foto_saida !== fotoSaida || (data.justificativa ?? null) !== (justificativa || null))) {
+      throw new PlantaoServiceError('record-write', 'O Supabase não confirmou os dados da saída no atendimento esperado.');
+    }
     if (!data) {
-      const { data: existing, error: lookupError } = await supabase
+      const { data: confirmed, error: confirmError } = await supabase
         .from('atendimentos')
-        .select('id, data_hora_saida, foto_saida')
+        .select('id, data_hora_saida, foto_saida, justificativa')
         .eq('id', remoteAttendanceId)
         .eq('usuario_id', userId)
         .maybeSingle();
-      if (lookupError || !existing || existing.data_hora_saida !== dataHoraSaida || existing.foto_saida !== fotoSaida) {
+      if (confirmError || !confirmed || String(confirmed.id) !== remoteAttendanceId ||
+          new Date(confirmed.data_hora_saida ?? '').getTime() !== new Date(dataHoraSaida).getTime() ||
+          confirmed.foto_saida !== fotoSaida || (confirmed.justificativa ?? null) !== (justificativa || null)) {
+        throw this.apiError('record-write', 'O Supabase não confirmou os dados da saída no atendimento esperado.', confirmError);
+      }
+    }
+    if (!data) {
+      const { data: existing, error: lookupError } = await supabase
+        .from('atendimentos')
+        .select('id, data_hora_saida, foto_saida, justificativa')
+        .eq('id', remoteAttendanceId)
+        .eq('usuario_id', userId)
+        .maybeSingle();
+      if (lookupError || !existing || String(existing.id) !== remoteAttendanceId ||
+          existing.data_hora_saida !== dataHoraSaida || existing.foto_saida !== fotoSaida ||
+          (existing.justificativa ?? null) !== (justificativa || null)) {
         throw this.apiError('record-write', 'Falha na confirma\u00e7\u00e3o da sa\u00edda.', lookupError);
       }
     }
