@@ -72,22 +72,14 @@
             <td>
               @if (interval.entry; as entry) {
                 <span>{{ vm.formatTime(entry.occurredAt) }}</span>
-                @if (entry.wasOffline) {
-                  <small class="offline-print-status">Registro offline</small>
-                  @if (entry.syncedAt) { <small class="offline-print-status">Sincronizado {{ vm.formatDate(entry.syncedAt) }} &#224;s {{ vm.formatTime(entry.syncedAt) }}</small> }
-                  @else { <small class="offline-print-status">{{ entry.syncStatus === 'failed' ? 'Falha na sincroniza&#231;&#227;o' : entry.syncStatus === 'syncing' ? 'Sincronizando' : 'Pendente de sincroniza&#231;&#227;o' }}</small> }
-                }
+                <small class="offline-print-status">{{ syncStatusLabel(entry) }}</small>
               } @else { &mdash; }
             </td>
             <td>
               @if (interval.exit; as exit) {
                 <span>{{ vm.formatTime(exit.occurredAt) }}</span>
                 @if (interval.entry && exit.occurredAt.toDateString() !== interval.entry.occurredAt.toDateString()) { <small>{{ vm.formatDate(exit.occurredAt) }}</small> }
-                @if (exit.wasOffline) {
-                  <small class="offline-print-status">Registro offline</small>
-                  @if (exit.syncedAt) { <small class="offline-print-status">Sincronizado {{ vm.formatDate(exit.syncedAt) }} &#224;s {{ vm.formatTime(exit.syncedAt) }}</small> }
-                  @else { <small class="offline-print-status">{{ exit.syncStatus === 'failed' ? 'Falha na sincroniza&#231;&#227;o' : exit.syncStatus === 'syncing' ? 'Sincronizando' : 'Pendente de sincroniza&#231;&#227;o' }}</small> }
-                }
+                <small class="offline-print-status">{{ syncStatusLabel(exit) }}</small>
               } @else { <strong>Em aberto</strong> }
             </td>
             <td>{{ formatDuration(interval.durationMs) }}</td>
