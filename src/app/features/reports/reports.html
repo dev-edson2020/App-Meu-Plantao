@@ -29,15 +29,16 @@
   </article>
 
   <div class="report-actions">
-    <button class="button-primary report-action" [disabled]="!vm.visibleRecords().length" (click)="printReport(false)">
+    <button class="button-primary report-action" [disabled]="!vm.visibleRecords().length || preparingPrint()" (click)="printReport(false)">
       <svg lucidePrinter class="ui-icon"></svg><span>Imprimir Relat&#243;rio<small>Resumo</small></span>
     </button>
-    <button class="button-outline report-action" [disabled]="!vm.visibleRecords().length" (click)="printReport(true)">
-      <svg lucidePrinter class="ui-icon"></svg><span>Imprimir com Fotografias<small>Relat&#243;rio Completo</small></span>
+    <button class="button-outline report-action" [disabled]="!vm.visibleRecords().length || preparingPrint()" (click)="printReport(true)">
+      <svg lucidePrinter class="ui-icon"></svg><span>{{ preparingPrint() ? 'Preparando relat&#243;rio...' : 'Imprimir com Fotografias' }}<small>Relat&#243;rio Completo</small></span>
     </button>
   </div>
+  @if (printMessage()) { <p class="print-preparation-message" role="status">{{ printMessage() }}</p> }
 
-  <section class="print-document" [class.with-photos]="vm.includePhotosInPrint()">
+  <section class="print-document" [class.with-photos]="vm.includePhotosInPrint()" [class.preparing-photos]="preparingPrint() && vm.includePhotosInPrint()">
     <header class="print-header">
       <div class="print-brand">MEU PLANT&#195;O <span>&ndash; RADIOLOGIA</span></div>
       <h1>Demonstrativo de Plant&#245;es</h1>
@@ -64,8 +65,8 @@
       <h2>Intervalos em ordem cronol&#243;gica</h2>
       <table>
         <thead><tr><th>Data</th><th>Entrada</th><th>Sa&#237;da</th><th>Dura&#231;&#227;o</th></tr></thead>
-        <tbody>
           @for (interval of reportIntervals(); track interval.id) {
+          <tbody class="print-interval-group">
           <tr class="print-interval-row">
             <td>{{ vm.formatDate(interval.date) }}</td>
             <td>
@@ -100,20 +101,24 @@
           <tr class="print-interval-detail print-photos-row"><td colspan="4">
             <div class="print-photos">
               @for (record of photosFor(interval); track record.id) {
-              <figure>
-                @if (record.photoUrl && !hasPhotoFailed(record)) {
-                  <img [src]="record.photoUrl" [alt]="'Fotografia de ' + record.kind + ' em ' + vm.formatDate(record.occurredAt) + ' às ' + vm.formatTime(record.occurredAt)" (error)="photoFailed(record)" />
-                } @else { <span class="print-photo-missing">{{ record.photoName ? 'Fotografia vinculada indisponível' : 'Sem fotografia vinculada' }}</span> }
-                <figcaption>{{ record.kind }} &middot; {{ vm.formatDate(record.occurredAt) }} &#224;s {{ vm.formatTime(record.occurredAt) }}</figcaption>
+              <figure class="print-event-photo">
+                @if (printPhotoUrl(record); as photoUrl) {
+                  @if (!hasPhotoFailed(record)) {
+                    <img data-print-photo [attr.data-record-id]="record.id" [src]="photoUrl" [alt]="'Fotografia de ' + record.kind + ' em ' + vm.formatDate(record.occurredAt) + ' às ' + vm.formatTime(record.occurredAt)" (error)="photoFailed(record.id)" />
+                  } @else { <span class="print-photo-missing">Falha ao carregar a fotografia vinculada.</span> }
+                } @else { <span class="print-photo-missing">{{ record.photoName ? 'Fotografia vinculada indisponível.' : 'Nenhuma fotografia vinculada a este evento.' }}</span> }
+                <figcaption><strong>{{ record.kind }}</strong><span>{{ vm.formatDate(record.occurredAt) }} &#224;s {{ vm.formatTime(record.occurredAt) }}</span></figcaption>
               </figure>
               }
             </div>
           </td></tr>
           }
+          </tbody>
           } @empty {
+          <tbody>
           <tr><td colspan="4">Nenhum intervalo no per&#237;odo selecionado.</td></tr>
+          </tbody>
           }
-        </tbody>
       </table>
     </section>
 

@@ -1,6 +1,7 @@
 import { afterNextRender, Component, computed, inject, Injector, signal } from '@angular/core';
 import { AppState } from '../../core/app-state.service';
 import type { TimeRecord } from '../../core/app-state.service';
+import { PlantaoService } from '../../core/plantao.service';
 import { LucideCalendarDays, LucideChevronLeft, LucideChevronRight, LucideFileText, LucideClock3, LucidePrinter } from '@lucide/angular';
 
 interface ReportInterval {
@@ -14,6 +15,7 @@ interface ReportInterval {
 @Component({ selector: 'app-reports', standalone: true, imports: [ LucideCalendarDays, LucideChevronLeft, LucideChevronRight, LucideFileText, LucideClock3, LucidePrinter ], templateUrl: './reports.html', styleUrl: './reports.scss' })
 export class ReportsComponent {
   readonly vm = inject(AppState);
+  private readonly plantaoService = inject(PlantaoService);
   private readonly injector = inject(Injector);
   readonly generatedAt = new Intl.DateTimeFormat('pt-BR', {
     dateStyle: 'long',
@@ -60,15 +62,100 @@ export class ReportsComponent {
     return individualRoundedToMinute !== summaryTotal;
   });
   readonly photoErrors = signal<ReadonlySet<string>>(new Set());
+  readonly printPhotoUrls = signal<ReadonlyMap<string, string | null>>(new Map());
+  readonly preparingPrint = signal(false);
+  readonly printMessage = signal('');
 
-  printReport(withPhotos: boolean): void {
+  async printReport(withPhotos: boolean): Promise<void> {
+    if (this.preparingPrint()) return;
+    this.preparingPrint.set(true);
+    this.printMessage.set('');
+    this.photoErrors.set(new Set());
+
+    if (withPhotos) {
+      const reportRecords = this.reportIntervals().flatMap(interval => this.photosFor(interval));
+      const urls = await Promise.all(reportRecords.map(async record => {
+        if (!record.photoPath) return [String(record.id), record.photoUrl ?? null] as const;
+        try {
+          return [String(record.id), await this.plantaoService.getPhotoUrl(record.photoPath)] as const;
+        } catch {
+          return [String(record.id), null] as const;
+        }
+      }));
+      this.printPhotoUrls.set(new Map(urls));
+    } else {
+      this.printPhotoUrls.set(new Map());
+    }
+
     this.vm.includePhotosInPrint.set(withPhotos);
-    afterNextRender(() => window.print(), { injector: this.injector });
+    await this.nextRender();
+
+    if (withPhotos) {
+      const images = Array.from(document.querySelectorAll<HTMLImageElement>(
+        '.print-document.with-photos img[data-print-photo]',
+      ));
+      const loaded = await Promise.all(images.map(image => this.waitForImage(image)));
+      images.forEach((image, index) => {
+        if (!loaded[index] && image.dataset['recordId']) this.photoFailed(image.dataset['recordId']);
+      });
+
+      const reportRecords = this.reportIntervals().flatMap(interval => this.photosFor(interval));
+      const unavailableCount = reportRecords.filter(record =>
+        !this.printPhotoUrl(record) || this.hasPhotoFailed(record),
+      ).length;
+      if (unavailableCount > 0) {
+        this.printMessage.set(
+          `${unavailableCount} fotografia(s) não puderam ser carregadas. Elas serão identificadas como indisponíveis no relatório.`,
+        );
+      }
+      await this.nextRender();
+    }
+
+    this.preparingPrint.set(false);
+    await this.nextRender();
+    window.print();
   }
 
-  photoFailed(record: TimeRecord): void {
+  printPhotoUrl(record: TimeRecord): string | null {
+    const urls = this.printPhotoUrls();
+    const id = String(record.id);
+    return urls.has(id) ? urls.get(id) ?? null : record.photoUrl ?? null;
+  }
+
+  private nextRender(): Promise<void> {
+    return new Promise(resolve => afterNextRender(() => resolve(), { injector: this.injector }));
+  }
+
+  private async waitForImage(image: HTMLImageElement): Promise<boolean> {
+    if (!image.complete) {
+      const finished = await new Promise<boolean>(resolve => {
+        const timeout = window.setTimeout(() => finish(false), 20_000);
+        const finish = (loaded: boolean): void => {
+          window.clearTimeout(timeout);
+          image.removeEventListener('load', onLoad);
+          image.removeEventListener('error', onError);
+          resolve(loaded);
+        };
+        const onLoad = (): void => finish(true);
+        const onError = (): void => finish(false);
+        image.addEventListener('load', onLoad, { once: true });
+        image.addEventListener('error', onError, { once: true });
+        if (image.complete) finish(image.naturalWidth > 0);
+      });
+      if (!finished) return false;
+    }
+    if (image.naturalWidth === 0) return false;
+    try {
+      await image.decode();
+      return image.naturalWidth > 0;
+    } catch {
+      return false;
+    }
+  }
+
+  photoFailed(recordId: string | number): void {
     const next = new Set(this.photoErrors());
-    next.add(String(record.id));
+    next.add(String(recordId));
     this.photoErrors.set(next);
   }
 

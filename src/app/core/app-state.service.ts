@@ -18,6 +18,7 @@ export interface TimeRecord {
   attendanceId?: string;
   plantaoId?: string;
   photoUrl?: string | null;
+  photoPath?: string | null;
   kind: RecordKind;
   occurredAt: Date;
   reason: string;
@@ -476,12 +477,12 @@ export class AppState implements OnDestroy {
         const mapped: TimeRecord[] = [{
           id: row.id + '-entrada', attendanceId: row.id, plantaoId: row.plantao_id, kind: 'Entrada',
           occurredAt: new Date(row.data_hora_entrada), reason: row.justificativa ?? '',
-          photoName: row.foto_entrada?.split('/').pop() ?? '', photoUrl: entryUrl,
+          photoName: row.foto_entrada?.split('/').pop() ?? '', photoUrl: entryUrl, photoPath: row.foto_entrada,
         }];
         if (row.data_hora_saida) mapped.push({
           id: row.id + '-saida', attendanceId: row.id, plantaoId: row.plantao_id, kind: 'Sa\u00edda',
           occurredAt: new Date(row.data_hora_saida), reason: row.justificativa ?? '',
-          photoName: row.foto_saida?.split('/').pop() ?? '', photoUrl: exitUrl,
+          photoName: row.foto_saida?.split('/').pop() ?? '', photoUrl: exitUrl, photoPath: row.foto_saida,
         });
         return mapped;
       }));
@@ -558,7 +559,7 @@ export class AppState implements OnDestroy {
     return {
       id: operation.id, attendanceId: operation.remoteAttendanceId ?? operation.localAttendanceId, plantaoId: operation.plantaoId, kind: operation.kind,
       occurredAt: new Date(operation.occurredAt), reason: operation.reason, photoName: operation.photoName,
-      photoUrl, localOperationId: operation.id, syncStatus: operation.status, wasOffline: operation.wasOffline,
+      photoUrl, photoPath: operation.photoPath ?? null, localOperationId: operation.id, syncStatus: operation.status, wasOffline: operation.wasOffline,
       syncError: operation.syncError,
       localCreatedAt: new Date(operation.createdAt), syncedAt: operation.syncedAt ? new Date(operation.syncedAt) : null,
     };
