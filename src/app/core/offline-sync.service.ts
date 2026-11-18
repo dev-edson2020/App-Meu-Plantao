@@ -56,6 +56,14 @@ export interface OfflineContext {
   atendimentoStartAt: string | null;
 }
 
+export interface OfflinePhotoLookup {
+  operationId?: string;
+  plantaoId: string;
+  kind: OfflineRecordKind;
+  attendanceId?: string;
+  photoPath: string;
+}
+
 const DATABASE_NAME = 'meu-plantao-offline';
 const DATABASE_VERSION = 1;
 
@@ -106,6 +114,45 @@ export class OfflineSyncService {
       if (normalized[index] !== values[index]) await this.putOperation(normalized[index]);
     }
     return normalized.sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+  }
+
+  /** Read-only, exact association lookup for report metadata and photos. Never uses time proximity. */
+  async findOperationForRecord(userId: string, lookup: OfflinePhotoLookup): Promise<OfflineOperation | null> {
+    if (!userId || !lookup.photoPath || !lookup.plantaoId) return null;
+    const pathParts = lookup.photoPath.split('/');
+    if (pathParts.length !== 3 || pathParts[0] !== userId || pathParts[1] !== lookup.plantaoId) return null;
+    const fileName = pathParts[2];
+    const extensionSeparator = fileName.lastIndexOf('.');
+    if (extensionSeparator <= 0) return null;
+    const pathOperationId = fileName.slice(0, extensionSeparator);
+    if (lookup.operationId && lookup.operationId !== pathOperationId) return null;
+
+    const db = await this.database();
+    const tx = db.transaction('operations', 'readonly');
+    const done = this.transactionDone(tx);
+    const request = tx.objectStore('operations').get(lookup.operationId ?? pathOperationId);
+    const operation = await this.requestResult<OfflineOperation | undefined>(request);
+    await done;
+
+    if (!operation || operation.id !== pathOperationId || operation.userId !== userId ||
+        operation.plantaoId !== lookup.plantaoId || operation.kind !== lookup.kind ||
+        operation.photoPath !== lookup.photoPath) return null;
+
+    if (lookup.attendanceId) {
+      const attendanceId = String(lookup.attendanceId);
+      const matchesRemoteId = /^\d+$/.test(attendanceId) && String(operation.remoteAttendanceId ?? '') === attendanceId;
+      const matchesLocalId = !/^\d+$/.test(attendanceId) && operation.localAttendanceId === attendanceId;
+      if (!matchesRemoteId && !matchesLocalId) return null;
+    }
+
+    return operation;
+  }
+
+  async findPhotoBlobForRecord(userId: string, lookup: OfflinePhotoLookup): Promise<Blob | null> {
+    const operation = await this.findOperationForRecord(userId, lookup);
+    return operation?.photoBlob instanceof Blob && operation.photoBlob.size > 0
+      ? operation.photoBlob
+      : null;
   }
 
   async getBlockingOperation(userId: string, operationId: string): Promise<OfflineOperation | null> {

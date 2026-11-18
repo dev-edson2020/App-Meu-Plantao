@@ -1,7 +1,9 @@
-import { afterNextRender, Component, computed, inject, Injector, signal } from '@angular/core';
+import { afterNextRender, Component, computed, inject, Injector, OnDestroy, signal } from '@angular/core';
 import { AppState } from '../../core/app-state.service';
 import type { TimeRecord } from '../../core/app-state.service';
 import { PlantaoService } from '../../core/plantao.service';
+import { AuthService } from '../../core/auth.service';
+import type { OfflineOperation, SyncStatus } from '../../core/offline-sync.service';
 import { LucideCalendarDays, LucideChevronLeft, LucideChevronRight, LucideFileText, LucideClock3, LucidePrinter } from '@lucide/angular';
 
 interface ReportInterval {
@@ -12,11 +14,20 @@ interface ReportInterval {
   durationMs: number | null;
 }
 
+interface ReportSyncState {
+  status: SyncStatus;
+  wasOffline: boolean;
+}
+
 @Component({ selector: 'app-reports', standalone: true, imports: [ LucideCalendarDays, LucideChevronLeft, LucideChevronRight, LucideFileText, LucideClock3, LucidePrinter ], templateUrl: './reports.html', styleUrl: './reports.scss' })
-export class ReportsComponent {
+export class ReportsComponent implements OnDestroy {
   readonly vm = inject(AppState);
   private readonly plantaoService = inject(PlantaoService);
+  private readonly auth = inject(AuthService);
   private readonly injector = inject(Injector);
+  private readonly printObjectUrls = new Set<string>();
+  private printCleanupTimer?: number;
+  private printInProgress = false;
   readonly generatedAt = new Intl.DateTimeFormat('pt-BR', {
     dateStyle: 'long',
     timeStyle: 'short',
@@ -65,55 +76,190 @@ export class ReportsComponent {
   readonly printPhotoUrls = signal<ReadonlyMap<string, string | null>>(new Map());
   readonly preparingPrint = signal(false);
   readonly printMessage = signal('');
+  readonly printSyncStates = signal<ReadonlyMap<string, ReportSyncState>>(new Map());
 
   async printReport(withPhotos: boolean): Promise<void> {
-    if (this.preparingPrint()) return;
+    if (this.preparingPrint() || this.printInProgress) return;
     this.preparingPrint.set(true);
     this.printMessage.set('');
     this.photoErrors.set(new Set());
+    const createdUrls = new Set<string>();
+    let printStarted = false;
 
-    if (withPhotos) {
-      const reportRecords = this.reportIntervals().flatMap(interval => this.photosFor(interval));
-      const urls = await Promise.all(reportRecords.map(async record => {
-        if (!record.photoPath) return [String(record.id), record.photoUrl ?? null] as const;
-        try {
-          return [String(record.id), await this.plantaoService.getPhotoUrl(record.photoPath)] as const;
-        } catch {
-          return [String(record.id), null] as const;
-        }
-      }));
-      this.printPhotoUrls.set(new Map(urls));
-    } else {
-      this.printPhotoUrls.set(new Map());
-    }
+    try {
+      const reportRecords = this.uniqueEventRecords();
+      const operationMap = await this.readCurrentOperations(reportRecords);
+      this.refreshPrintSyncStates(reportRecords, operationMap);
+      if (withPhotos) {
+        const photoRecords = this.uniquePhotoRecords();
+        const isOnline = this.vm.offlineSync.online() && typeof navigator !== 'undefined' && navigator.onLine;
+        const urls = await Promise.all(photoRecords.map(async record => {
+          if (!record.photoPath) return [String(record.id), record.photoUrl ?? null] as const;
+          const recordId = String(record.id);
+          const operation = operationMap.get(recordId);
+          if (operation?.photoBlob instanceof Blob && operation.photoBlob.size > 0) {
+            const localUrl = URL.createObjectURL(operation.photoBlob);
+            createdUrls.add(localUrl);
+            this.printObjectUrls.add(localUrl);
+            return [recordId, localUrl] as const;
+          }
 
-    this.vm.includePhotosInPrint.set(withPhotos);
-    await this.nextRender();
-
-    if (withPhotos) {
-      const images = Array.from(document.querySelectorAll<HTMLImageElement>(
-        '.print-document.with-photos img[data-print-photo]',
-      ));
-      const loaded = await Promise.all(images.map(image => this.waitForImage(image)));
-      images.forEach((image, index) => {
-        if (!loaded[index] && image.dataset['recordId']) this.photoFailed(image.dataset['recordId']);
-      });
-
-      const reportRecords = this.reportIntervals().flatMap(interval => this.photosFor(interval));
-      const unavailableCount = reportRecords.filter(record =>
-        !this.printPhotoUrl(record) || this.hasPhotoFailed(record),
-      ).length;
-      if (unavailableCount > 0) {
-        this.printMessage.set(
-          `${unavailableCount} fotografia(s) não puderam ser carregadas. Elas serão identificadas como indisponíveis no relatório.`,
-        );
+          if (!isOnline) return [recordId, null] as const;
+          try {
+            const remoteUrl = await this.plantaoService.getPhotoUrl(record.photoPath);
+            return [recordId, remoteUrl ?? record.photoUrl ?? null] as const;
+          } catch {
+            return [recordId, record.photoUrl ?? null] as const;
+          }
+        }));
+        this.printPhotoUrls.set(new Map(urls));
+      } else {
+        this.printPhotoUrls.set(new Map());
       }
-      await this.nextRender();
-    }
 
-    this.preparingPrint.set(false);
-    await this.nextRender();
-    window.print();
+      this.vm.includePhotosInPrint.set(withPhotos);
+      await this.nextRender();
+
+      if (withPhotos) {
+        const images = Array.from(document.querySelectorAll<HTMLImageElement>(
+          '.print-document.with-photos img[data-print-photo]',
+        ));
+        const loaded = await Promise.all(images.map(image => this.waitForImage(image)));
+        images.forEach((image, index) => {
+          if (!loaded[index] && image.dataset['recordId']) this.photoFailed(image.dataset['recordId']);
+        });
+
+        const unavailableCount = this.uniquePhotoRecords().filter(record =>
+          !this.printPhotoUrl(record) || this.hasPhotoFailed(record),
+        ).length;
+        if (unavailableCount > 0) {
+          this.printMessage.set(
+            `${unavailableCount} fotografia(s) nao puderam ser carregadas. Elas serao identificadas como indisponiveis no relatorio.`,
+          );
+        }
+        await this.nextRender();
+      }
+
+      this.preparingPrint.set(false);
+      await this.nextRender();
+      this.printInProgress = true;
+      window.addEventListener('afterprint', this.handleAfterPrint, { once: true });
+      this.printCleanupTimer = window.setTimeout(this.handleAfterPrint, 30 * 60_000);
+      printStarted = true;
+      window.print();
+    } catch (error) {
+      console.error('Falha ao preparar o relatorio para impressao:', error);
+      this.printMessage.set('Nao foi possivel preparar o relatorio para impressao. Tente novamente.');
+      if (printStarted) {
+        this.handleAfterPrint();
+        printStarted = false;
+      }
+    } finally {
+      this.preparingPrint.set(false);
+      if (!printStarted) {
+        for (const url of createdUrls) {
+          URL.revokeObjectURL(url);
+          this.printObjectUrls.delete(url);
+        }
+        this.printPhotoUrls.set(new Map());
+        this.vm.includePhotosInPrint.set(false);
+      }
+    }
+  }
+
+  private uniquePhotoRecords(): TimeRecord[] {
+    const records = this.reportIntervals().flatMap(interval => this.photosFor(interval));
+    const unique = new Map<string, TimeRecord>();
+    for (const record of records) {
+      const key = `${record.attendanceId ?? record.id}:${record.kind}:${record.photoPath ?? ''}`;
+      if (!unique.has(key)) unique.set(key, record);
+    }
+    return [...unique.values()];
+  }
+
+  private uniqueEventRecords(): TimeRecord[] {
+    const unique = new Map<string, TimeRecord>();
+    for (const interval of this.reportIntervals()) {
+      for (const record of [interval.entry, interval.exit]) {
+        if (record) unique.set(String(record.id), record);
+      }
+    }
+    return [...unique.values()];
+  }
+
+  private async readCurrentOperations(records: TimeRecord[]): Promise<Map<string, OfflineOperation | null>> {
+    const operations = new Map<string, OfflineOperation | null>();
+    const cached = this.vm.offlineSync.operations();
+    for (const record of records) {
+      const key = String(record.id);
+      const userId = this.auth.currentUserId() ?? cached.find(operation => operation.id === record.localOperationId)?.userId ?? null;
+      if (!userId || !record.photoPath || !record.plantaoId) {
+        operations.set(key, null);
+        continue;
+      }
+      try {
+        operations.set(key, await this.vm.offlineSync.findOperationForRecord(userId, {
+          operationId: record.localOperationId,
+          plantaoId: record.plantaoId,
+          kind: record.kind,
+          attendanceId: record.attendanceId,
+          photoPath: record.photoPath,
+        }));
+      } catch (error) {
+        console.warn('[reports] Could not read local sync status; preserving the record fallback state.', error);
+        operations.set(key, null);
+      }
+    }
+    return operations;
+  }
+
+  private refreshPrintSyncStates(
+    records: TimeRecord[],
+    operations: Map<string, OfflineOperation | null>,
+  ): void {
+    const states = new Map<string, ReportSyncState>();
+    for (const record of records) {
+      const key = String(record.id);
+      const operation = operations.get(key);
+      if (operation) {
+        states.set(key, { status: operation.status, wasOffline: operation.wasOffline });
+      } else if (/^\d+-(entrada|saida)$/i.test(key)) {
+        states.set(key, { status: 'synced', wasOffline: false });
+      } else {
+        states.set(key, { status: record.syncStatus ?? 'pending', wasOffline: record.wasOffline ?? true });
+      }
+    }
+    this.printSyncStates.set(states);
+  }
+
+  syncStatusLabel(record: TimeRecord): string {
+    const state = this.printSyncStates().get(String(record.id)) ?? {
+      status: record.syncStatus ?? 'pending',
+      wasOffline: record.wasOffline ?? true,
+    };
+    if (state.status === 'synced') return state.wasOffline ? 'Registrado offline · Sincronizado' : 'Sincronizado';
+    if (state.status === 'syncing') return 'Sincronizando';
+    if (state.status === 'failed') return 'Falha na sincronização';
+    return 'Pendente de sincronização';
+  }
+
+  private readonly handleAfterPrint = (): void => {
+    window.removeEventListener('afterprint', this.handleAfterPrint);
+    if (this.printCleanupTimer !== undefined) window.clearTimeout(this.printCleanupTimer);
+    this.printCleanupTimer = undefined;
+    for (const url of this.printObjectUrls) URL.revokeObjectURL(url);
+    this.printObjectUrls.clear();
+    this.printPhotoUrls.set(new Map());
+    this.photoErrors.set(new Set());
+    this.vm.includePhotosInPrint.set(false);
+    this.printInProgress = false;
+  };
+
+  ngOnDestroy(): void {
+    window.removeEventListener('afterprint', this.handleAfterPrint);
+    if (this.printCleanupTimer !== undefined) window.clearTimeout(this.printCleanupTimer);
+    for (const url of this.printObjectUrls) URL.revokeObjectURL(url);
+    this.printObjectUrls.clear();
   }
 
   printPhotoUrl(record: TimeRecord): string | null {
