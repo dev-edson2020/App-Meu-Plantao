@@ -1,4 +1,12 @@
 <section class="records-screen screen-scroll">
+    @if (vm.offlineSync.pendingCount() > 0) {
+    <aside class="offline-queue" aria-live="polite">
+      <span>{{ vm.offlineSync.pendingCount() }} registro(s) aguardando ou em sincronização</span>
+      <button type="button" class="button-outline" [disabled]="!vm.offlineSync.online() || vm.offlineSync.syncing()" (click)="vm.offlineSync.syncNow()">
+        {{ vm.offlineSync.syncing() ? 'Sincronizando…' : 'Tentar sincronizar' }}
+      </button>
+    </aside>
+    }
     <div class="month-select">
       <span class="month-icon">
         <svg lucideCalendarDays class="ui-icon"></svg>
@@ -49,6 +57,16 @@
             <span> · {{ record.reason }}</span>
             }
           </small>
+          @if (record.localOperationId || record.wasOffline) {
+          <small class="offline-record-status" [attr.data-status]="record.syncStatus">
+            @switch (record.syncStatus) {
+              @case ('syncing') { Sincronizando registro{{ record.wasOffline ? ' offline' : '' }} }
+              @case ('failed') { Falha na sincroniza&#231;&#227;o: {{ record.syncError || 'erro n&#227;o especificado' }} }
+              @case ('synced') { {{ record.wasOffline ? 'Registro offline · sincronizado' : 'Sincronizado' }} }
+              @default { {{ record.wasOffline ? 'Registro offline · pendente' : 'Aguardando sincroniza&#231;&#227;o' }}{{ record.syncError ? ' · ' + record.syncError : '' }} }
+            }
+          </small>
+          }
           @if (record.photoName) {
           <small class="photo-tag">
             <svg lucideImage class="ui-icon"></svg>
@@ -57,8 +75,12 @@
           }
         </span>
 
-        <span class="record-check">
-          <svg lucideCheck class="ui-icon"></svg>
+        <span class="record-check" [attr.data-status]="record.syncStatus">
+          @if (!record.localOperationId || record.syncStatus === 'synced') {
+            <svg lucideCheck class="ui-icon"></svg>
+          } @else if (record.syncStatus === 'failed') { ! }
+          @else if (record.syncStatus === 'syncing') { &#8635; }
+          @else { &#8943; }
         </span>
         <svg lucideChevronRight class="record-chevron"></svg>
       </button>
@@ -98,6 +120,51 @@
           }
         </dl>
 
+        @if (record.localOperationId) {
+        <section class="record-sync-detail" aria-live="polite">
+          @if (operationLoading()) {
+          <p class="record-sync-label">Consultando estado da fila local…</p>
+          } @else if (operationLookupFailed()) {
+          <p class="record-sync-error">Não foi possível consultar o estado persistido deste registro.</p>
+          } @else if (selectedOperation(); as operation) {
+          <p class="record-sync-label" [attr.data-status]="operation.status">
+            @if (operation.status === 'syncing') { <span class="sync-progress-spinner" aria-hidden="true"></span> }
+            {{ getOperationStatusLabel(operation) }}
+          </p>
+          @if (operation.status === 'pending') {
+            @if (operation.syncError) { <p class="record-sync-error">{{ operation.syncError }}</p> }
+            <button class="button-outline record-sync-action" type="button"
+              [disabled]="!vm.offlineSync.online() || vm.offlineSync.syncing()"
+              (click)="syncSelectedOperation()">
+              {{ vm.offlineSync.online() ? 'Sincronizar agora' : 'Sem conexão — tente quando estiver online' }}
+            </button>
+          } @else if (operation.status === 'syncing') {
+            <p class="record-sync-hint">Enviando fotografia e confirmando o registro no servidor.</p>
+            <button class="button-primary record-sync-action record-sync-retry" type="button" disabled aria-busy="true">
+              <span class="sync-progress-spinner" aria-hidden="true"></span>
+              Tentar novamente
+            </button>
+          } @else if (operation.status === 'synced') {
+            <p class="record-sync-confirmation">Registro e fotografia confirmados no Supabase.</p>
+          } @else {
+            <p class="record-sync-error">{{ operation.syncError || 'O servidor não confirmou esta operação.' }}</p>
+            <button class="button-primary record-sync-action record-sync-retry" type="button"
+              [disabled]="!vm.offlineSync.online() || vm.offlineSync.syncing()"
+              (click)="syncSelectedOperation()">
+              <svg class="ui-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M20 11a8.1 8.1 0 0 0-15.5-2M4 4v5h5" />
+                <path d="M4 13a8.1 8.1 0 0 0 15.5 2M20 20v-5h-5" />
+              </svg>
+              {{ vm.offlineSync.online() ? 'Tentar novamente' : 'Sem conexão — tente quando estiver online' }}
+            </button>
+          }
+          @if (syncActionMessage()) { <p class="record-sync-hint">{{ syncActionMessage() }}</p> }
+          } @else {
+          <p class="record-sync-error">Este registro não foi encontrado na fila local.</p>
+          }
+        </section>
+        }
+
         <div class="record-detail-photo">
           <h3>Fotografia</h3>
           @if (record.photoUrl && !photoLoadFailed()) {
@@ -116,3 +183,4 @@
     </div>
     }
   </section>
+

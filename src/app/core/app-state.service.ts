@@ -7,22 +7,32 @@ import type { Plantao, Atendimento } from './plantao.service';
 import { ToastService } from './toast';
 import { FormValidationService } from './form-validation.service';
 import { AuthService } from './auth.service';
+import { OfflineSyncService } from './offline-sync.service';
+import type { OfflineOperation, SyncStatus } from './offline-sync.service';
 import type { SupabaseClient } from '@supabase/supabase-js';
 export type Screen = 'welcome' | 'home' | 'register' | 'records' | 'reports' | 'profile';
 type RecordKind = 'Entrada' | 'Saída';
 
 export interface TimeRecord {
   id: string | number;
+  attendanceId?: string;
   plantaoId?: string;
   photoUrl?: string | null;
   kind: RecordKind;
   occurredAt: Date;
   reason: string;
   photoName: string;
+  localOperationId?: string;
+  syncStatus?: SyncStatus;
+  syncError?: string;
+  wasOffline?: boolean;
+  localCreatedAt?: Date;
+  syncedAt?: Date | null;
 }
 
 @Injectable({ providedIn: 'root' })
 export class AppState implements OnDestroy {
+  readonly offlineSync = inject(OfflineSyncService);
   private readonly formValidation = inject(FormValidationService);
   readonly profileSubmitted = signal(false);
   private readonly toastService = inject(ToastService);
@@ -66,6 +76,7 @@ export class AppState implements OnDestroy {
   private readonly previousScreen = signal<Screen>('welcome');
   readonly recordKind = signal<RecordKind>('Entrada');
   readonly records = signal<TimeRecord[]>([]);
+  private readonly offlinePhotoUrls = new Map<string, string>();
   readonly activePlantao = signal<Plantao | null>(null);
   readonly activeAtendimento = signal<Atendimento | null>(null);
   readonly notice = signal('');
@@ -110,6 +121,16 @@ export class AppState implements OnDestroy {
       void this.attachAuthListener();
     }
 
+    effect(() => {
+      const operations = this.offlineSync.operations();
+      const byId = new Map(operations.map(operation => [operation.id, operation]));
+      untracked(() => this.records.update(records => records.map(record => {
+        if (!record.localOperationId) return record;
+        const operation = byId.get(record.localOperationId);
+        return operation ? this.applyOfflineMetadata(record, operation) : record;
+      })));
+    });
+
     this.router.events
       .pipe(filter((event): event is NavigationEnd => event instanceof NavigationEnd))
       .subscribe((event) => {
@@ -141,6 +162,10 @@ export class AppState implements OnDestroy {
     }
 
     supabase.auth.onAuthStateChange((event, session) => {
+      if (session?.user) {
+        this.auth.currentUserId.set(session.user.id);
+        void this.offlineSync.refresh(session.user.id).then(() => this.offlineSync.syncNow(session.user.id));
+      }
       if (event === 'PASSWORD_RECOVERY') {
         this.auth.showPasswordUpdate();
         this.screen.set('welcome');
@@ -161,6 +186,8 @@ export class AppState implements OnDestroy {
       }
 
       if (event === 'SIGNED_OUT') {
+        this.auth.currentUserId.set(null);
+        this.offlineSync.clearVisibleOperations();
         this.profileName.set('');
         this.crtrValue.set('');
         this.crtrRegionValue.set('');
@@ -383,28 +410,40 @@ export class AppState implements OnDestroy {
     if (!this.selectedPhoto) { this.notice.set('Adicione uma foto para continuar.'); return; }
     const kind = this.recordKind();
     const reason = this.reasonValue.trim();
+    let savedOperation: OfflineOperation | undefined;
     this.recordSaving.set(true);
     try {
+      const userId = await this.auth.restoreCurrentUserId();
+      if (!userId) { this.notice.set('Entre novamente para registrar um plantão.'); return; }
       if (kind === 'Entrada') {
         if (this.activeAtendimento()) { this.notice.set('J\u00e1 existe um atendimento em andamento. Registre a Sa\u00edda primeiro.'); return; }
-        const plantao = await this.plantaoService.startPlantao(occurredAt.toISOString());
-        this.activePlantao.set(plantao);
-        const photoPath = await this.plantaoService.uploadPhoto(this.selectedPhoto, plantao.id);
-        const atendimento = await this.plantaoService.startAtendimento(plantao.id, occurredAt.toISOString(), photoPath, reason || null);
-        this.activeAtendimento.set(atendimento);
+        let plantaoAtivo = this.activePlantao();
+        if (!plantaoAtivo && this.offlineSync.online()) {
+          plantaoAtivo = await this.plantaoService.getOpenPlantao();
+          if (plantaoAtivo) {
+            const atendimento = await this.plantaoService.getOpenAtendimento(plantaoAtivo.id);
+            if (atendimento) { this.activePlantao.set(plantaoAtivo); this.activeAtendimento.set(atendimento); this.notice.set('J\u00e1 existe um atendimento em andamento. Registre a Sa\u00edda primeiro.'); return; }
+            await this.offlineSync.saveServerContext(plantaoAtivo, null, userId);
+          }
+        }
+        savedOperation = await this.offlineSync.enqueueEntry(userId, plantaoAtivo, this.selectedPhoto, occurredAt, reason, () => this.notice.set('Sincronizando registro'));
+        const context = await this.offlineSync.getContext(userId);
+        if (context) {
+          this.activePlantao.set({ id: context.plantaoId, usuario_id: userId, data_hora_inicio: context.plantaoStartAt, data_hora_fim: null });
+          this.activeAtendimento.set({ id: savedOperation.remoteAttendanceId ?? '', localAttendanceId: savedOperation.localAttendanceId, usuario_id: userId, plantao_id: context.plantaoId, data_hora_entrada: occurredAt.toISOString(), data_hora_saida: null, foto_entrada: '', foto_saida: null, justificativa: reason || null });
+        }
       } else {
         const plantao = this.activePlantao();
         const atendimentoAtual = this.activeAtendimento();
         if (!plantao || !atendimentoAtual) { this.notice.set('N\u00e3o existe atendimento aberto para registrar a Sa\u00edda.'); return; }
         if (occurredAt.getTime() <= new Date(atendimentoAtual.data_hora_entrada).getTime()) { this.notice.set('A Sa\u00edda deve ter hor\u00e1rio posterior \u00e0 Entrada.'); return; }
-        const photoPath = await this.plantaoService.uploadPhoto(this.selectedPhoto, plantao.id);
-        await this.plantaoService.finishAtendimento(atendimentoAtual.id, occurredAt.toISOString(), photoPath, reason || null);
+        savedOperation = await this.offlineSync.enqueueExit(userId, plantao, atendimentoAtual, this.selectedPhoto, occurredAt, reason, () => this.notice.set('Sincronizando registro'));
         this.activeAtendimento.set(null);
       }
       this.selectedMonth.set(occurredAt.getMonth());
       this.selectedYear.set(occurredAt.getFullYear());
-      await this.loadRecords();
-      this.notice.set(kind === 'Entrada' ? 'Entrada registrada com sucesso!' : 'Sa\u00edda registrada com sucesso!');
+      this.notice.set(this.recordSaveMessage(savedOperation));
+      void this.loadRecords();
       this.reasonValue = '';
       this.selectedPhoto = null;
       this.photoName = '';
@@ -417,6 +456,16 @@ export class AppState implements OnDestroy {
     } finally { this.recordSaving.set(false); }
   }
 
+  private recordSaveMessage(operation?: OfflineOperation): string {
+    if (operation?.status === 'synced') return 'Registro salvo e sincronizado com sucesso';
+    if (operation?.status === 'failed') {
+      return `Registro salvo no dispositivo, mas houve falha na sincronização${operation.syncError ? `: ${operation.syncError}` : ''}`;
+    }
+    if (operation?.status === 'syncing') return 'Sincronizando registro';
+    const detail = operation?.syncErrorCode === 'no-internet' && operation.syncError ? ` (${operation.syncError})` : '';
+    return `Registro salvo no dispositivo. Aguardando sincronização${detail}`;
+  }
+
   async loadRecords(): Promise<void> {
     this.recordsLoading.set(true);
     this.recordsError.set(false);
@@ -425,21 +474,39 @@ export class AppState implements OnDestroy {
       const events = await Promise.all(rows.map(async (row) => {
         const [entryUrl, exitUrl] = await Promise.all([this.plantaoService.getPhotoUrl(row.foto_entrada), this.plantaoService.getPhotoUrl(row.foto_saida)]);
         const mapped: TimeRecord[] = [{
-          id: row.id + '-entrada', plantaoId: row.plantao_id, kind: 'Entrada',
+          id: row.id + '-entrada', attendanceId: row.id, plantaoId: row.plantao_id, kind: 'Entrada',
           occurredAt: new Date(row.data_hora_entrada), reason: row.justificativa ?? '',
           photoName: row.foto_entrada?.split('/').pop() ?? '', photoUrl: entryUrl,
         }];
         if (row.data_hora_saida) mapped.push({
-          id: row.id + '-saida', plantaoId: row.plantao_id, kind: 'Sa\u00edda',
+          id: row.id + '-saida', attendanceId: row.id, plantaoId: row.plantao_id, kind: 'Sa\u00edda',
           occurredAt: new Date(row.data_hora_saida), reason: row.justificativa ?? '',
           photoName: row.foto_saida?.split('/').pop() ?? '', photoUrl: exitUrl,
         });
         return mapped;
       }));
-      this.records.set(events.flat().sort((x, y) => y.occurredAt.getTime() - x.occurredAt.getTime()));
+      let serverRecords = events.flat();
+      const userId = this.auth.currentUserId() ?? await this.auth.restoreCurrentUserId();
+      const operations = userId ? await this.offlineSync.getOperations(userId) : [];
+      serverRecords = serverRecords.map(record => {
+        const operation = operations.find(item => item.remoteAttendanceId === String(record.attendanceId) && item.kind === record.kind);
+        return operation ? { ...record, attendanceId: operation.remoteAttendanceId ?? operation.localAttendanceId, reason: operation.reason, localOperationId: operation.id, syncStatus: operation.status, syncError: operation.syncError, wasOffline: operation.wasOffline, localCreatedAt: new Date(operation.createdAt), syncedAt: operation.syncedAt ? new Date(operation.syncedAt) : null } : record;
+      });
+      const localRecords = await Promise.all(operations.filter(operation => {
+        return !operation.remoteAttendanceId || !serverRecords.some(record => String(record.attendanceId) === operation.remoteAttendanceId && record.kind === operation.kind);
+      }).map(operation => this.mapOfflineOperation(operation)));
+      this.records.set([...serverRecords, ...localRecords].sort((x, y) => y.occurredAt.getTime() - x.occurredAt.getTime()));
     } catch (error) {
       console.error('Falha ao carregar registros:', error);
-      this.recordsError.set(true);
+      const userId = this.auth.currentUserId() ?? await this.auth.restoreCurrentUserId().catch(() => null);
+      try {
+        const operations = userId ? await this.offlineSync.getOperations(userId) : [];
+        const localRecords = await Promise.all(operations.map(operation => this.mapOfflineOperation(operation)));
+        if (localRecords.length) {
+          this.records.set(localRecords.sort((x, y) => y.occurredAt.getTime() - x.occurredAt.getTime()));
+          this.recordsError.set(false);
+        } else this.recordsError.set(true);
+      } catch { this.recordsError.set(true); }
     } finally { this.recordsLoading.set(false); }
   }
 
@@ -471,7 +538,34 @@ export class AppState implements OnDestroy {
 
   }
 
+  private applyOfflineMetadata(record: TimeRecord, operation: OfflineOperation): TimeRecord {
+    return {
+      ...record,
+      syncStatus: operation.status,
+      syncError: operation.syncError,
+      wasOffline: operation.wasOffline,
+      localCreatedAt: new Date(operation.createdAt),
+      syncedAt: operation.syncedAt ? new Date(operation.syncedAt) : null,
+    };
+  }
+
+  private async mapOfflineOperation(operation: OfflineOperation): Promise<TimeRecord> {
+    let photoUrl: string | null = null;
+    if (operation.photoBlob) {
+      photoUrl = this.offlinePhotoUrls.get(operation.id) ?? URL.createObjectURL(operation.photoBlob);
+      this.offlinePhotoUrls.set(operation.id, photoUrl);
+    }
+    return {
+      id: operation.id, attendanceId: operation.remoteAttendanceId ?? operation.localAttendanceId, plantaoId: operation.plantaoId, kind: operation.kind,
+      occurredAt: new Date(operation.occurredAt), reason: operation.reason, photoName: operation.photoName,
+      photoUrl, localOperationId: operation.id, syncStatus: operation.status, wasOffline: operation.wasOffline,
+      syncError: operation.syncError,
+      localCreatedAt: new Date(operation.createdAt), syncedAt: operation.syncedAt ? new Date(operation.syncedAt) : null,
+    };
+  }
+
   private async loadActivePlantao(): Promise<void> {
+    await this.restoreOfflineActivePlantao();
     try {
       const plantao = await this.plantaoService.getOpenPlantao();
       this.activePlantao.set(plantao);
@@ -482,9 +576,38 @@ export class AppState implements OnDestroy {
       } else {
         this.activeAtendimento.set(null);
       }
+      const userId = this.auth.currentUserId();
+      if (userId && plantao) await this.offlineSync.saveServerContext(plantao, this.activeAtendimento(), userId);
+      if (userId && !plantao) {
+        const context = await this.offlineSync.getContext(userId);
+        const group = context ? (await this.offlineSync.getOperations(userId)).filter(operation => operation.plantaoId === context.plantaoId).sort((a, b) => a.createdAt.localeCompare(b.createdAt)) : [];
+        const lastEntry = group.filter(operation => operation.kind === 'Entrada').at(-1);
+        const lastExit = group.filter(operation => operation.kind === 'Sa\u00edda').at(-1);
+        if (context && lastEntry && (!lastExit || lastEntry.createdAt > lastExit.createdAt)) {
+          this.activePlantao.set({ id: context.plantaoId, usuario_id: userId, data_hora_inicio: context.plantaoStartAt, data_hora_fim: null });
+          this.activeAtendimento.set({ id: lastEntry.remoteAttendanceId ?? '', localAttendanceId: lastEntry.localAttendanceId, usuario_id: userId, plantao_id: context.plantaoId, data_hora_entrada: lastEntry.occurredAt, data_hora_saida: null, foto_entrada: '', foto_saida: null, justificativa: lastEntry.reason || null });
+        }
+      }
 
     } catch {
       this.notice.set('Não foi possível carregar o plantão em andamento.');
+    }
+  }
+
+  private async restoreOfflineActivePlantao(): Promise<void> {
+    try {
+    const userId = this.auth.currentUserId() ?? await this.auth.restoreCurrentUserId().catch(() => null);
+    if (!userId) return;
+    const context = await this.offlineSync.getContext(userId);
+    if (!context) return;
+    const group = (await this.offlineSync.getOperations(userId)).filter(operation => operation.plantaoId === context.plantaoId).sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+    const lastEntry = group.filter(operation => operation.kind === 'Entrada').at(-1);
+    const lastExit = group.filter(operation => operation.kind === 'Sa\u00edda').at(-1);
+    if (!lastEntry || (lastExit && lastExit.createdAt > lastEntry.createdAt)) return;
+    this.activePlantao.set({ id: context.plantaoId, usuario_id: userId, data_hora_inicio: context.plantaoStartAt, data_hora_fim: null });
+    this.activeAtendimento.set({ id: lastEntry.remoteAttendanceId ?? '', localAttendanceId: lastEntry.localAttendanceId, usuario_id: userId, plantao_id: context.plantaoId, data_hora_entrada: lastEntry.occurredAt, data_hora_saida: null, foto_entrada: '', foto_saida: null, justificativa: lastEntry.reason || null });
+    } catch (error) {
+      console.error('N\u00e3o foi poss\u00edvel restaurar o contexto local do plant\u00e3o:', error);
     }
   }
 

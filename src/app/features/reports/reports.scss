@@ -1,15 +1,15 @@
-
+﻿
 /* Shared styles extracted from global stylesheet. */
 
 
-/* Histórico */
+/* HistÃ³rico */
 .records-screen,
 .reports-screen {
   padding: 16px 17px 22px;
 }
 
 
-/* Relatórios */
+/* RelatÃ³rios */
 .reports-screen {
   background: radial-gradient(ellipse at 96% 0%, rgba(25, 91, 136, .2), transparent 38%), linear-gradient(180deg, #091e30, #071a2b 58%, #081b2c);
 }
@@ -216,19 +216,25 @@
 
 .print-document { display: none; }
 
+@page {
+  size: A4 portrait;
+  margin: 12mm 13mm 17mm;
+}
+
 @media print {
   .reports-screen {
     display: block !important;
     flex: none !important;
     width: 100% !important;
     min-height: 0 !important;
+    margin: 0 !important;
     padding: 0 !important;
     overflow: visible !important;
     background: #fff !important;
     color: #17212a !important;
     font-family: Arial, Helvetica, sans-serif !important;
-    font-size: 10pt;
-    line-height: 1.4;
+    font-size: 9pt;
+    line-height: 1.28;
   }
 
   .reports-screen > :not(.print-document) { display: none !important; }
@@ -241,95 +247,83 @@
     color: #17212a !important;
     background: #fff !important;
     font-family: Arial, Helvetica, sans-serif !important;
-    font-size: 10pt;
-    line-height: 1.4;
+    font-size: 9pt;
+    line-height: 1.28;
   }
 
   .print-header {
-    padding-bottom: 5mm;
-    border-bottom: 1.2pt solid #205a70;
+    padding-bottom: 3mm;
+    border-bottom: 1pt solid #205a70;
     break-inside: avoid;
   }
 
   .print-brand {
     color: #205a70;
-    font-size: 9pt;
+    font-size: 8pt;
     font-weight: 700;
-    letter-spacing: 1.2pt;
+    letter-spacing: .8pt;
     text-transform: uppercase;
   }
 
   .print-brand span { color: #384a55; }
 
   .print-header h1 {
-    margin: 3mm 0 4mm;
+    margin: 2mm 0 2.5mm;
     color: #132a36;
-    font-size: 20pt;
+    font-size: 17pt;
     font-weight: 700;
-    line-height: 1.15;
+    line-height: 1.12;
   }
 
   .print-identification {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    column-gap: 8mm;
-    row-gap: 1mm;
+    column-gap: 7mm;
+    row-gap: .7mm;
   }
 
   .print-identification p {
     margin: 0;
     overflow-wrap: anywhere;
-    font-size: 9.5pt;
+    font-size: 8.5pt;
   }
 
   .print-summary {
-    margin-top: 5mm;
+    margin-top: 3mm;
     break-inside: avoid;
   }
 
   .print-summary h2,
   .print-events h2 {
-    margin: 0 0 2.5mm;
+    margin: 0 0 1.5mm;
     color: #1b3d4d;
-    font-size: 12pt;
+    font-size: 10.5pt;
     font-weight: 700;
   }
 
   .print-summary-grid {
     display: grid;
     grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: 2.5mm;
+    gap: 1.5mm;
   }
 
   .print-summary-grid > div {
     display: grid;
     align-content: center;
-    gap: 1mm;
-    min-height: 19mm;
-    padding: 2.5mm 3mm;
-    border: .6pt solid #bdcbd1;
-    border-top: 2pt solid #397e94;
-    border-radius: 1.5mm;
+    gap: .4mm;
+    min-height: 12mm;
+    padding: 1.5mm 2mm;
+    border: .5pt solid #bdcbd1;
+    border-top: 1.5pt solid #397e94;
+    border-radius: 1mm;
     background: #f7fafb !important;
     break-inside: avoid;
   }
 
-  .print-summary-grid span {
-    color: #4c5d66;
-    font-size: 8pt;
-  }
-
-  .print-summary-grid strong {
-    color: #122d3b;
-    font-size: 15pt;
-    line-height: 1.15;
-    overflow-wrap: anywhere;
-  }
-
-  .print-summary-grid > div:last-child strong { font-size: 10.5pt; }
-
-  .print-events { margin-top: 6mm; }
-
+  .print-summary-grid span { color: #4c5d66; font-size: 7.3pt; }
+  .print-summary-grid strong { color: #122d3b; font-size: 12pt; line-height: 1.1; overflow-wrap: anywhere; }
+  .print-summary-grid > div:last-child strong { font-size: 9pt; }
+  .print-events { margin-top: 3.5mm; }
   .print-events h2 { break-after: avoid; }
 
   .print-events table {
@@ -337,15 +331,14 @@
     border-collapse: collapse;
     table-layout: fixed;
     color: #17212a;
-    font-size: 9pt;
+    font-size: 8.4pt;
   }
 
   .print-events thead { display: table-header-group; }
-
   .print-events th,
   .print-events td {
-    padding: 2.2mm 2mm;
-    border: .6pt solid #aebcc3;
+    padding: 1.15mm 1.5mm;
+    border: .5pt solid #b8c3c8;
     text-align: left;
     vertical-align: top;
     overflow-wrap: anywhere;
@@ -354,50 +347,26 @@
   .print-events th {
     background: #eaf0f3 !important;
     color: #193c4b;
-    font-size: 8.5pt;
+    font-size: 8pt;
     font-weight: 700;
   }
 
-  .print-events tr { break-inside: avoid; page-break-inside: avoid; }
+  .print-events th:nth-child(1) { width: 24%; }
+  .print-events th:nth-child(2) { width: 23%; }
+  .print-events th:nth-child(3) { width: 27%; }
+  .print-events th:nth-child(4) { width: 26%; }
+  .print-interval-row { break-after: avoid; page-break-after: avoid; }
+  .print-interval-detail { break-inside: avoid; page-break-inside: avoid; }
+  .print-interval-detail td { padding-top: .8mm; padding-bottom: .8mm; }
+  .print-interval-detail strong { color: #344c57; }
+  .offline-print-status { display: block; margin-top: .4mm; color: #455d68; font-size: 6.8pt; line-height: 1.15; }
+  .print-total-discrepancy { margin: 2mm 0 0; color: #7a4b00; font-size: 7.5pt; }
+  .print-footer { margin-top: 2.5mm; padding-top: 1.2mm; border-top: .5pt solid #c7d0d4; color: #52616a; font-size: 7.2pt; }
 
-  .print-events th:nth-child(1) { width: 19%; }
-  .print-events th:nth-child(2) { width: 12%; }
-  .print-events th:nth-child(3) { width: 13%; }
-  .print-events th:nth-child(4) { width: 56%; }
-  .with-photos .print-events th:nth-child(1) { width: 15%; }
-  .with-photos .print-events th:nth-child(2) { width: 10%; }
-  .with-photos .print-events th:nth-child(3) { width: 11%; }
-  .with-photos .print-events th:nth-child(4) { width: 25%; }
-  .with-photos .print-events th:nth-child(5) { width: 39%; }
-
-  .print-photo-cell figure {
-    display: grid;
-    justify-items: start;
-    gap: 1.5mm;
-    margin: 0;
-    break-inside: avoid;
-  }
-
-  .print-photo-cell img {
-    display: block;
-    width: auto;
-    max-width: 100%;
-    height: auto;
-    max-height: 38mm;
-    object-fit: contain;
-    border: .5pt solid #bdcbd1;
-  }
-
-  .print-photo-cell figcaption {
-    color: #40545e;
-    font-size: 7.5pt;
-  }
-
-  .print-footer {
-    margin-top: 6mm;
-    padding-top: 2mm;
-    border-top: .5pt solid #c7d0d4;
-    color: #52616a;
-    font-size: 8pt;
-  }
+  .print-photos { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 2mm 4mm; }
+  .print-photos figure { display: grid; align-content: start; gap: .8mm; flex: 0 1 46%; max-width: 46%; margin: 0; break-inside: avoid; }
+  .print-photos img { display: block; width: auto; max-width: 100%; height: auto; max-height: 27mm; object-fit: contain; border: .5pt solid #bdcbd1; }
+  .print-photos figcaption { color: #40545e; font-size: 7pt; }
+  .print-photo-missing { color: #52616a; font-size: 7.5pt; }
+  .print-total-discrepancy { break-inside: avoid; }
 }

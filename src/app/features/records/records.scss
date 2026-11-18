@@ -195,6 +195,10 @@
   stroke-width: 2.3;
 }
 
+.record-check[data-status="pending"] { border-color: rgba(245, 190, 89, .35); background: rgba(179, 121, 24, .18); color: #f4c978; }
+.record-check[data-status="syncing"] { border-color: rgba(92, 202, 220, .35); background: rgba(20, 120, 150, .2); color: #80d9e5; }
+.record-check[data-status="failed"] { border-color: rgba(255, 120, 120, .35); background: rgba(165, 36, 36, .2); color: #ff9c9c; }
+
 
 .record-chevron {
   flex: 0 0 15px;
@@ -264,6 +268,13 @@
 }
 
 .history-state { display: grid; justify-items: center; gap: 12px; min-height: 160px; align-content: center; padding: 20px; color: var(--text-secondary); text-align: center; }
+.offline-queue { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:12px; padding:12px 14px; border:1px solid rgba(95,211,223,.24); border-radius:14px; background:rgba(10,42,65,.86); color:#c7e3e8; font-size:12px; }
+.offline-queue button { width:auto; min-height:36px; padding:0 12px; white-space:nowrap; }
+.record-info .offline-record-status { color:#f4c978; }
+.record-info .offline-record-status[data-status="synced"] { color:#63dfb4; }
+.record-info .offline-record-status[data-status="failed"] { color:#ff9c9c; }
+.record-info .offline-record-status[data-status="syncing"] { color:#80d9e5; }
+.record-info .offline-record-status[data-status="pending"] { color:#f4c978; }
 
 .record-detail-backdrop {
   position: fixed;
@@ -355,6 +366,71 @@
 }
 
 .record-detail-reason dd { font-weight: 400; line-height: 1.5; }
+
+.record-sync-detail {
+  display: grid;
+  gap: 8px;
+  margin-top: 14px;
+  padding: 12px;
+  border: 1px solid rgba(105, 166, 194, .18);
+  border-radius: 13px;
+  background: rgba(6, 26, 42, .55);
+}
+
+.record-sync-label,
+.record-sync-hint,
+.record-sync-error,
+.record-sync-confirmation {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  color: #f4c978;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.record-sync-label[data-status="syncing"] { color: #80d9e5; }
+.record-sync-label[data-status="synced"],
+.record-sync-confirmation { color: #63dfb4; }
+.record-sync-label[data-status="failed"],
+.record-sync-error { color: #ff9c9c; }
+.record-sync-hint { color: #a9bec9; }
+
+.record-sync-action {
+  width: auto;
+  min-height: 40px;
+  justify-self: start;
+  padding: 0 14px;
+}
+
+.record-sync-retry {
+  width: 100%;
+  min-height: 50px;
+  justify-self: stretch;
+  border-radius: 14px;
+  color: #fff;
+  font-weight: 700;
+  box-shadow: 0 8px 22px rgba(0, 108, 183, .19), inset 0 1px rgba(255, 255, 255, .14);
+}
+
+.record-sync-retry:hover:not(:disabled) { filter: brightness(1.08); }
+.record-sync-retry:active:not(:disabled) { transform: scale(.985); }
+.record-sync-retry .sync-progress-spinner { border-color: rgba(255, 255, 255, .35); border-top-color: #fff; }
+
+.record-sync-action:disabled { cursor: not-allowed; opacity: .65; }
+
+.sync-progress-spinner {
+  width: 14px;
+  height: 14px;
+  flex: 0 0 14px;
+  border: 2px solid rgba(128, 217, 229, .3);
+  border-top-color: #80d9e5;
+  border-radius: 50%;
+  animation: record-sync-spin .8s linear infinite;
+}
+
+@keyframes record-sync-spin { to { transform: rotate(360deg); } }
 
 .record-detail-photo { margin-top: 18px; }
 

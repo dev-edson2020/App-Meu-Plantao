@@ -6,7 +6,7 @@
       @if (step() === 0) {
         <div #signupFields class="signup-fields">
           <label class="auth-field"><span>Nome completo</span><span class="input-shell"><svg lucideUserRound class="ui-icon"></svg><input name="signupName" autocomplete="name" placeholder="Seu nome completo" [ngModel]="auth.signupName" (ngModelChange)="auth.signupName = $event; clearError('name')" required /></span>@if(errors()['name']){<app-field-error [message]="errors()['name']" />}</label>
-          <label class="auth-field"><span>N&#250;mero do CRTR</span><span class="input-shell"><input name="signupCrtr" placeholder="N&#250;mero" [ngModel]="auth.signupCrtr" (ngModelChange)="auth.signupCrtr = $event; clearError('crtr')" required /></span>@if(errors()['crtr']){<app-field-error [message]="errors()['crtr']" />}</label>
+          <label class="auth-field"><span>N&#250;mero do CRTR</span><span class="input-shell"><input name="signupCrtr" placeholder="Digite seu CRTR" [ngModel]="auth.signupCrtr" (ngModelChange)="updateCrtr($event)" required /></span>@if(errors()['crtr']){<app-field-error [message]="errors()['crtr']" />}</label>
           <label class="auth-field"><span>Hospital ou cl&#237;nica</span><span class="input-shell"><svg lucideBuilding class="ui-icon"></svg><input name="signupWorkplace" placeholder="Local de trabalho" [ngModel]="auth.signupWorkplace" (ngModelChange)="auth.signupWorkplace = $event; clearError('workplace')" required /></span>@if(errors()['workplace']){<app-field-error [message]="errors()['workplace']" />}</label>
         </div>
         <button class="button-primary auth-submit" type="submit">Continuar <svg lucideArrowRight class="ui-icon"></svg></button>

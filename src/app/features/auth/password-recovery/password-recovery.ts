@@ -25,6 +25,10 @@ export class PasswordRecoveryComponent {
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(this.auth.email().trim());
   }
 
+  passwordValid(password: string): boolean {
+    return /^[\p{L}\p{N}]{6,}$/u.test(password);
+  }
+
   clearError(field: string): void {
     delete this.errors[field];
   }
@@ -47,6 +51,7 @@ export class PasswordRecoveryComponent {
     this.clearErrors();
     if (!this.password) this.errors['password'] = 'Informe sua nova senha.';
     else if (this.password.length < 6) this.errors['password'] = 'A senha deve ter pelo menos 6 caracteres.';
+    else if (!this.passwordValid(this.password)) this.errors['password'] = 'Use somente letras e números, sem caracteres especiais.';
     if (!this.confirmation) this.errors['confirmation'] = 'Confirme sua nova senha.';
     else if (this.password !== this.confirmation) this.errors['confirmation'] = 'As senhas não são iguais.';
 

@@ -1,4 +1,4 @@
-
+﻿
 import { Injectable } from '@angular/core';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { getSupabase } from './supabase-client';
@@ -11,7 +11,10 @@ export interface Plantao {
 }
 
 export interface Atendimento {
+  /** Remote atendimentos.id (PostgreSQL BIGINT), represented as a decimal string. */
   id: string;
+  /** Local-only identifier used to pair queued entry/exit operations. */
+  localAttendanceId?: string;
   plantao_id: string;
   usuario_id: string;
   data_hora_entrada: string;
@@ -19,6 +22,15 @@ export interface Atendimento {
   foto_entrada: string;
   foto_saida: string | null;
   justificativa: string | null;
+}
+
+export type PlantaoFailureKind = 'supabase-unavailable' | 'photo-upload' | 'record-write' | 'communication' | 'authentication';
+
+export class PlantaoServiceError extends Error {
+  constructor(readonly kind: PlantaoFailureKind, message: string, cause?: unknown) {
+    super(message, { cause });
+    this.name = 'PlantaoServiceError';
+  }
 }
 
 @Injectable({
@@ -38,8 +50,13 @@ export class PlantaoService {
   private async getUserId(supabase: SupabaseClient): Promise<string> {
     const { data, error } = await supabase.auth.getUser();
 
-    if (error || !data.user) {
-      throw new Error('Usuário não autenticado.');
+    if (error) {
+      const status = (error as { status?: number }).status;
+      if (status !== 401 && status !== 403) throw this.apiError('record-write', 'Falha ao validar a sessão.', error);
+      throw new PlantaoServiceError('authentication', 'Sessão inválida ou expirada.', error);
+    }
+    if (!data.user) {
+      throw new PlantaoServiceError('authentication', 'Usuário não autenticado.', error);
     }
 
     return data.user.id;
@@ -47,7 +64,7 @@ export class PlantaoService {
 
   async getAtendimentos(): Promise<Atendimento[]> {
     const supabase = await this.getClient();
-    if (!supabase) throw new Error('Supabase n\u00e3o est\u00e1 configurado.');
+    if (!supabase) throw new PlantaoServiceError('supabase-unavailable', 'Supabase indisponível ou não configurado.');
     const userId = await this.getUserId(supabase);
     const { data, error } = await supabase
       .from('atendimentos')
@@ -55,7 +72,7 @@ export class PlantaoService {
       .eq('usuario_id', userId)
       .order('data_hora_entrada', { ascending: false });
     if (error) throw new Error('N\u00e3o foi poss\u00edvel consultar os registros.');
-    return data ?? [];
+    return (data ?? []).map(row => ({ ...row, id: String(row.id) }));
   }
 
   async getPhotoUrl(filePath: string | null): Promise<string | null> {
@@ -68,7 +85,7 @@ export class PlantaoService {
   async getOpenPlantao(): Promise<Plantao | null> {
     const supabase = await this.getClient();
     if (!supabase) {
-      throw new Error('Supabase não está configurado.');
+      throw new PlantaoServiceError('supabase-unavailable', 'Supabase indisponível ou não configurado.');
     }
 
     const userId = await this.getUserId(supabase);
@@ -83,29 +100,29 @@ export class PlantaoService {
       .maybeSingle();
 
     if (error) {
-      throw new Error('Não foi possível consultar o plantão aberto.');
+      throw this.apiError('record-write', 'Falha ao consultar o plantão aberto.', error);
     }
 
     return data;
   }
 
-  async startPlantao(dataHoraInicio: string): Promise<Plantao> {
+  async startPlantao(dataHoraInicio: string, idempotencyId?: string): Promise<Plantao> {
     const supabase = await this.getClient();
     if (!supabase) {
-      throw new Error('Supabase não está configurado.');
+      throw new PlantaoServiceError('supabase-unavailable', 'Supabase indisponível ou não configurado.');
     }
 
     const userId = await this.getUserId(supabase);
 
-    const plantaoAberto = await this.getOpenPlantao();
-
-    if (plantaoAberto) {
-      return plantaoAberto;
+    if (!idempotencyId) {
+      const plantaoAberto = await this.getOpenPlantao();
+      if (plantaoAberto) return plantaoAberto;
     }
 
     const { data, error } = await supabase
       .from('plantoes')
       .insert({
+        ...(idempotencyId ? { id: idempotencyId } : {}),
         usuario_id: userId,
         data_hora_inicio: dataHoraInicio,
         data_hora_fim: null,
@@ -114,7 +131,16 @@ export class PlantaoService {
       .single();
 
     if (error || !data) {
-      throw new Error('Não foi possível iniciar o plantão.');
+      if (idempotencyId) {
+        const { data: existing, error: lookupError } = await supabase
+          .from('plantoes')
+          .select('id, usuario_id, data_hora_inicio, data_hora_fim')
+          .eq('id', idempotencyId)
+          .eq('usuario_id', userId)
+          .maybeSingle();
+        if (!lookupError && existing && existing.data_hora_inicio === dataHoraInicio) return existing;
+      }
+      throw this.apiError('record-write', 'Falha na gravação do plantão.', error);
     }
 
     return data;
@@ -123,7 +149,7 @@ export class PlantaoService {
   async finishPlantao(plantaoId: string, dataHoraFim: string): Promise<void> {
     const supabase = await this.getClient();
     if (!supabase) {
-      throw new Error('Supabase não está configurado.');
+      throw new PlantaoServiceError('supabase-unavailable', 'Supabase indisponível ou não configurado.');
     }
 
     const userId = await this.getUserId(supabase);
@@ -160,7 +186,7 @@ export class PlantaoService {
   async getOpenAtendimento(plantaoId: string): Promise<Atendimento | null> {
     const supabase = await this.getClient();
     if (!supabase) {
-      throw new Error('Supabase não está configurado.');
+      throw new PlantaoServiceError('supabase-unavailable', 'Supabase indisponível ou não configurado.');
     }
 
     const userId = await this.getUserId(supabase);
@@ -178,18 +204,18 @@ export class PlantaoService {
       throw new Error('Não foi possível consultar o atendimento aberto.');
     }
 
-    return data;
+    return data ? { ...data, id: String(data.id) } : null;
   }
 
-  async uploadPhoto(photo: File, plantaoId: string): Promise<string> {
+  async uploadPhoto(photo: File, plantaoId: string, idempotencyId?: string): Promise<string> {
     const supabase = await this.getClient();
     if (!supabase) {
-      throw new Error('Supabase não está configurado.');
+      throw new PlantaoServiceError('supabase-unavailable', 'Supabase indisponível ou não configurado.');
     }
 
     const userId = await this.getUserId(supabase);
     const extension = photo.name.split('.').pop()?.toLowerCase() || 'jpg';
-    const fileName = `${crypto.randomUUID()}.${extension}`;
+    const fileName = `${idempotencyId ?? crypto.randomUUID()}.${extension}`;
     const filePath = `${userId}/${plantaoId}/${fileName}`;
 
     const { error } = await supabase.storage
@@ -200,7 +226,11 @@ export class PlantaoService {
       });
 
     if (error) {
-      throw new Error('Não foi possível enviar a fotografia.');
+      if (idempotencyId) {
+        const { error: existingError } = await supabase.storage.from(this.bucket).createSignedUrl(filePath, 60);
+        if (!existingError) return filePath;
+      }
+      throw this.apiError('photo-upload', 'Falha no upload da fotografia.', error);
     }
 
     return filePath;
@@ -211,53 +241,81 @@ export class PlantaoService {
     dataHoraEntrada: string,
     fotoEntrada: string,
     justificativa: string | null,
+    idempotencyId?: string,
+    localAttendanceId?: string,
   ): Promise<Atendimento> {
     const supabase = await this.getClient();
     if (!supabase) {
-      throw new Error('Supabase não está configurado.');
+      throw new PlantaoServiceError('supabase-unavailable', 'Supabase indisponível ou não configurado.');
     }
 
     const userId = await this.getUserId(supabase);
 
-    const atendimentoAberto = await this.getOpenAtendimento(plantaoId);
-
-    if (atendimentoAberto) {
-      throw new Error('Encerre o atendimento atual antes de iniciar outro.');
+    if (idempotencyId) {
+      const existing = await this.findIdempotentEntry(supabase, userId, plantaoId, dataHoraEntrada, fotoEntrada, justificativa);
+      if (existing) return existing;
+    } else {
+      const atendimentoAberto = await this.getOpenAtendimento(plantaoId);
+      if (atendimentoAberto) throw new Error('Encerre o atendimento atual antes de iniciar outro.');
     }
 
     const { data, error } = await supabase
       .from('atendimentos')
-      .insert({
+      .insert(this.attendanceEntryPayload({
         plantao_id: plantaoId,
         usuario_id: userId,
         data_hora_entrada: dataHoraEntrada,
         foto_entrada: fotoEntrada,
         justificativa: justificativa || null,
-      })
+      }, { operationId: idempotencyId, localAttendanceId }))
       .select('*')
       .single();
 
+    this.logAttendanceResponse('PlantaoService.startAtendimento', {
+      operationId: idempotencyId ?? null,
+      localAttendanceId: localAttendanceId ?? null,
+      remoteAttendanceId: null,
+      table: 'atendimentos',
+      payload: {
+        plantao_id: plantaoId,
+        usuario_id: '[redacted]',
+        data_hora_entrada: dataHoraEntrada,
+        foto_entrada: '[redacted storage path]',
+        justificativa: justificativa ? '[redacted]' : null,
+      },
+      response: { id: data?.id == null ? null : String(data.id), error: this.supabaseErrorDetails(error) },
+    });
+
     if (error || !data) {
-      throw new Error('Não foi possível registrar a entrada.');
+      if (idempotencyId) {
+        const existing = await this.findIdempotentEntry(supabase, userId, plantaoId, dataHoraEntrada, fotoEntrada, justificativa);
+        if (existing) return existing;
+      }
+      throw this.apiError('record-write', 'Falha na gravação da entrada.', error);
     }
 
-    return data;
+    return { ...data, id: String(data.id) };
   }
 
   async finishAtendimento(
-    atendimentoId: string,
+    remoteAttendanceId: string,
     dataHoraSaida: string,
     fotoSaida: string,
     justificativa: string | null,
+    operationId?: string,
+    localAttendanceId?: string,
   ): Promise<void> {
+    if (!/^\d+$/.test(remoteAttendanceId)) {
+      throw new PlantaoServiceError('record-write', 'Identificador remoto de atendimento inválido: era esperado um BIGINT decimal.');
+    }
     const supabase = await this.getClient();
     if (!supabase) {
-      throw new Error('Supabase não está configurado.');
+      throw new PlantaoServiceError('supabase-unavailable', 'Supabase indisponível ou não configurado.');
     }
 
     const userId = await this.getUserId(supabase);
 
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from('atendimentos')
       .update({
         data_hora_saida: dataHoraSaida,
@@ -265,13 +323,80 @@ export class PlantaoService {
         justificativa: justificativa || null,
         updated_at: new Date().toISOString(),
       })
-      .eq('id', atendimentoId)
+      .eq('id', remoteAttendanceId)
       .eq('usuario_id', userId)
-      .is('data_hora_saida', null);
+      .is('data_hora_saida', null)
+      .select('id')
+      .maybeSingle();
+
+    this.logAttendanceResponse('PlantaoService.finishAtendimento', {
+      operationId: operationId ?? null,
+      localAttendanceId: localAttendanceId ?? null,
+      remoteAttendanceId,
+      table: 'atendimentos',
+      payload: {
+        data_hora_saida: dataHoraSaida,
+        foto_saida: '[redacted storage path]',
+        justificativa: justificativa ? '[redacted]' : null,
+        updated_at: '[generated timestamp]',
+      },
+      response: { id: data?.id == null ? null : String(data.id), error: this.supabaseErrorDetails(error) },
+    });
 
     if (error) {
-      throw new Error('Não foi possível registrar a saída.');
+      throw this.apiError('record-write', 'Falha na gravação da saída.', error);
     }
+    if (!data) {
+      const { data: existing, error: lookupError } = await supabase
+        .from('atendimentos')
+        .select('id, data_hora_saida, foto_saida')
+        .eq('id', remoteAttendanceId)
+        .eq('usuario_id', userId)
+        .maybeSingle();
+      if (lookupError || !existing || existing.data_hora_saida !== dataHoraSaida || existing.foto_saida !== fotoSaida) {
+        throw this.apiError('record-write', 'Falha na confirma\u00e7\u00e3o da sa\u00edda.', lookupError);
+      }
+    }
+  }
+
+  private attendanceEntryPayload<T extends Record<string, unknown>>(
+    payload: T,
+    context: { operationId?: string; localAttendanceId?: string },
+  ): T {
+    const hasId = Object.prototype.hasOwnProperty.call(payload, 'id');
+    const isUuid = typeof payload['id'] === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(payload['id']);
+    console.info('[supabase] preparando insert', {
+      operationId: context.operationId ?? null,
+      localAttendanceId: context.localAttendanceId ?? null,
+      remoteAttendanceId: null,
+      functionName: 'PlantaoService.startAtendimento',
+      table: 'atendimentos',
+      payload: {
+        ...payload,
+        usuario_id: '[redacted]',
+        foto_entrada: '[redacted storage path]',
+        justificativa: payload['justificativa'] ? '[redacted]' : null,
+      },
+      idPropertyPresent: hasId,
+      uuidIdProperty: isUuid,
+    });
+    if (hasId && isUuid) {
+      throw new PlantaoServiceError('record-write', 'Envio de entrada bloqueado: atendimentos.id não aceita UUID.');
+    }
+    if (hasId) {
+      throw new PlantaoServiceError('record-write', 'Envio de entrada bloqueado: o ID BIGINT deve ser gerado pelo Supabase.');
+    }
+    return payload;
+  }
+
+  private supabaseErrorDetails(error: unknown): unknown {
+    if (!error || typeof error !== 'object') return error ?? null;
+    const details = error as { code?: string; message?: string; details?: string; hint?: string; status?: number };
+    return { code: details.code, message: details.message, details: details.details, hint: details.hint, status: details.status };
+  }
+
+  private logAttendanceResponse(functionName: string, details: Record<string, unknown>): void {
+    console.info('[supabase] resposta de atendimentos', { functionName, ...details });
   }
 
   async deletePhoto(filePath: string): Promise<void> {
@@ -285,5 +410,48 @@ export class PlantaoService {
     if (error) {
       throw new Error('Não foi possível remover a fotografia.');
     }
+  }
+
+  private async findIdempotentEntry(
+    supabase: SupabaseClient,
+    userId: string,
+    plantaoId: string,
+    dataHoraEntrada: string,
+    fotoEntrada: string,
+    justificativa: string | null,
+  ): Promise<Atendimento | null> {
+    const { data, error } = await supabase
+      .from('atendimentos')
+      .select('*')
+      .eq('usuario_id', userId)
+      .eq('plantao_id', plantaoId)
+      .eq('foto_entrada', fotoEntrada)
+      .maybeSingle();
+
+    if (error) throw this.apiError('record-write', 'Falha ao confirmar uma entrada já enviada.', error);
+    if (!data) return null;
+    if (data.data_hora_entrada !== dataHoraEntrada || (data.justificativa ?? null) !== (justificativa || null)) {
+      throw new PlantaoServiceError('record-write', 'A fotografia idempotente já está associada a dados de entrada diferentes.');
+    }
+    return { ...data, id: String(data.id) };
+  }
+
+  private apiError(kind: Exclude<PlantaoFailureKind, 'authentication' | 'supabase-unavailable'>, message: string, cause: unknown): PlantaoServiceError {
+    const details = cause as { status?: number; message?: string; name?: string } | null;
+    const diagnostic = `${details?.name ?? ''} ${details?.message ?? ''}`.toLowerCase();
+    if (kind === 'photo-upload') {
+      const communicationFailure = cause instanceof TypeError || details?.name === 'AbortError' || /failed to fetch|network|fetch failed|timed? ?out|timeout/.test(diagnostic);
+      const categoryMessage = communicationFailure
+        ? 'Falha temporária de comunicação durante o upload da fotografia.'
+        : message;
+      return new PlantaoServiceError(kind, `${categoryMessage}${details?.status ? ` HTTP ${details.status}.` : ''}${details?.message ? ` ${details.message}` : ''}`, cause);
+    }
+    if (cause instanceof TypeError || details?.name === 'AbortError' || /failed to fetch|network|fetch failed|timed? ?out|timeout/.test(diagnostic)) {
+      return new PlantaoServiceError('communication', 'Falha temporária de comunicação com o Supabase.', cause);
+    }
+    if (details?.status !== undefined && details.status >= 500 && details.status <= 599) {
+      return new PlantaoServiceError('supabase-unavailable', `${message} Supabase respondeu com HTTP ${details.status}.`, cause);
+    }
+    return new PlantaoServiceError(kind, `${message}${details?.message ? ` ${details.message}` : ''}`, cause);
   }
 }
