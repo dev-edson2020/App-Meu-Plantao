@@ -76,11 +76,9 @@
 
 
 .user-summary>div span {
-  overflow: hidden;
   color: #a8bdc9;
   font-size: 11px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
 }
 
 

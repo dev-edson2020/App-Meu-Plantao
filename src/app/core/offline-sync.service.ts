@@ -3,6 +3,7 @@ import { AuthService } from './auth.service';
 import { PlantaoService } from './plantao.service';
 import { PlantaoServiceError } from './plantao.service';
 import type { Atendimento, Plantao, PlantaoFailureKind } from './plantao.service';
+import { buildDeterministicPhotoPath, createExitOperation } from './sync-invariants';
 
 export type SyncStatus = 'pending' | 'syncing' | 'failed' | 'synced';
 export type SyncErrorCode = PlantaoFailureKind | 'no-internet' | 'unknown';
@@ -298,32 +299,34 @@ export class OfflineSyncService {
     onSyncStart?: () => void,
   ): Promise<OfflineOperation> {
     this.refreshConnectionState();
+    const operationId = crypto.randomUUID();
+    const localAttendanceId = atendimento.localAttendanceId ?? crypto.randomUUID();
+    const remoteAttendanceId = /^\d+$/.test(String(atendimento.id)) ? String(atendimento.id) : undefined;
+    const photoPath = buildDeterministicPhotoPath(userId, plantao.id, photo.name, operationId);
     const operation: OfflineOperation = {
-      id: crypto.randomUUID(),
-      userId,
-      kind: 'Saída',
-      plantaoId: plantao.id,
-      localAttendanceId: atendimento.localAttendanceId ?? crypto.randomUUID(),
-      remoteAttendanceId: /^\d+$/.test(String(atendimento.id)) ? String(atendimento.id) : undefined,
-      createPlantao: false,
-      occurredAt: occurredAt.toISOString(),
-      createdAt: new Date().toISOString(),
-      photoBlob: photo,
-      photoName: photo.name,
-      photoType: photo.type || 'application/octet-stream',
-      photoSize: photo.size,
-      reason,
-      wasOffline: !this.online(),
-      status: 'pending',
-      retryCount: 0,
+      ...createExitOperation({
+        id: operationId,
+        userId,
+        plantaoId: plantao.id,
+        localAttendanceId,
+        remoteAttendanceId,
+        occurredAt: occurredAt.toISOString(),
+        createdAt: new Date().toISOString(),
+        photoBlob: photo,
+        photoName: photo.name,
+        photoType: photo.type || 'application/octet-stream',
+        photoPath,
+        reason,
+        wasOffline: !this.online(),
+      }),
     };
     const context: OfflineContext = {
       userId,
       plantaoId: plantao.id,
       plantaoStartAt: plantao.data_hora_inicio,
       plantaoSynced: true,
-      localAttendanceId: atendimento.localAttendanceId ?? null,
-      remoteAttendanceId: /^\d+$/.test(String(atendimento.id)) ? String(atendimento.id) : null,
+      localAttendanceId,
+      remoteAttendanceId: remoteAttendanceId ?? null,
       atendimentoStartAt: null,
     };
     await this.putOperationAndContext(operation, context);
@@ -544,7 +547,9 @@ export class OfflineSyncService {
     this.refreshConnectionState();
     if (!this.online()) throw new PlantaoServiceError('communication', 'Sem conexão; o envio da fotografia não foi iniciado.');
     const file = new File([operation.photoBlob], operation.photoName, { type: operation.photoType, lastModified: Date.parse(operation.createdAt) });
-    const photoPath = await this.plantaoService.uploadPhoto(file, operation.plantaoId, operation.id);
+    const photoPath = await this.plantaoService.uploadPhoto(file, operation.plantaoId, operation.id, operation.photoPath);
+    operation.photoPath = photoPath;
+    await this.putOperation(operation);
     this.refreshConnectionState();
     if (!this.online()) throw new PlantaoServiceError('communication', 'A conexão foi interrompida depois do upload; o atendimento ainda não foi confirmado.');
     let remoteAttendanceId = operation.remoteAttendanceId;
@@ -557,7 +562,7 @@ export class OfflineSyncService {
       if (!remoteAttendanceId || !/^\d+$/.test(remoteAttendanceId)) {
         throw new PlantaoServiceError('record-write', 'A saída aguarda a confirmação do atendimento de entrada correspondente.');
       }
-      await this.plantaoService.finishAtendimento(remoteAttendanceId, operation.occurredAt, photoPath, operation.reason || null, operation.id, operation.localAttendanceId);
+      await this.plantaoService.finishAtendimento(remoteAttendanceId, operation.occurredAt, photoPath, operation.reason || null, operation.plantaoId, operation.id, operation.localAttendanceId);
     }
     if (!remoteAttendanceId || !/^\d+$/.test(remoteAttendanceId)) {
       throw new PlantaoServiceError('record-write', 'O Supabase não retornou um ID BIGINT válido para o atendimento.');

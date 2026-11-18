@@ -5,6 +5,7 @@
     "ng": "ng",
     "start": "ng serve",
     "build": "ng build",
+    "test:sync": "node --test tests/sync-invariants.test.mjs",
     "watch": "ng build --watch --configuration development",
     "test": "ng test"
   },
