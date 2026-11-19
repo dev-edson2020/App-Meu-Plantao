@@ -1,1 +1,35 @@
-<section class="welcome-screen screen-scroll"><div class="welcome-radiograph" aria-hidden="true"></div><header class="auth-visual"><div class="welcome-brand"><h1>Meu Plant&#227;o</h1><div class="brand-subtitle">RADIOLOGIA</div></div><p class="welcome-description">Controle de plant&#245;es, horas e registros de ponto.</p></header><div class="auth-content" #loginFields><form class="auth-form" (ngSubmit)="submit()" novalidate><label class="auth-field"><span>E-mail</span><span class="input-shell" [style.border-color]="submitted() && !validEmail() ? '#ef4444' : null"><svg lucideMail class="ui-icon"></svg><input name="email" type="email" placeholder="seu@email.com" autocomplete="email" [ngModel]="auth.email()" (ngModelChange)="auth.email.set($event)" required /></span>@if(submitted() && !validEmail()){<app-field-error [message]="!auth.email().trim() ? 'Informe seu e-mail.' : 'Informe um e-mail v&#225;lido.'" />}</label><label class="auth-field"><span>Senha</span><span class="input-shell" [style.border-color]="submitted() && !auth.loginPassword.trim() ? '#ef4444' : null"><svg lucideLockKeyhole class="ui-icon"></svg><input name="password" type="password" placeholder="Sua senha" autocomplete="current-password" [(ngModel)]="auth.loginPassword" required /></span>@if(submitted() && !auth.loginPassword.trim()){<app-field-error message="Informe sua senha." />}</label><button class="forgot-password" type="button" (click)="auth.show('recovery')">Esqueci minha senha</button><button class="button-primary auth-submit" type="submit" [disabled]="auth.busy()"><svg lucideLogIn class="ui-icon"></svg>Entrar</button></form><button class="button-outline auth-alternate" type="button" (click)="auth.show('signup')">Criar conta</button><footer class="auth-footer">&#169; 2026 Meu Plant&#227;o &#8212; Desenvolvido por Edson Meira.</footer></div></section>
+<section class="welcome-screen screen-scroll">
+  <div class="welcome-radiograph" aria-hidden="true"></div>
+  <header class="auth-visual">
+    <div class="welcome-brand">
+      <h1>Meu Plant&#227;o</h1>
+      <div class="brand-subtitle">RADIOLOGIA</div>
+    </div>
+    <p class="welcome-description">Controle de plant&#245;es, horas e registros de ponto.</p>
+  </header>
+  <div class="auth-content" #loginFields>
+    <form class="auth-form" (ngSubmit)="submit()" novalidate><label class="auth-field"><span>E-mail</span><span
+          class="input-shell" [style.border-color]="submitted() && !validEmail() ? '#ef4444' : null"><svg lucideMail
+            class="ui-icon"></svg><input name="email" type="email" placeholder="seu@email.com" autocomplete="email"
+            [ngModel]="auth.email()" (ngModelChange)="auth.email.set($event)" required /></span>@if(submitted() &&
+        !validEmail()){<app-field-error
+          [message]="!auth.email().trim() ? 'Informe seu e-mail.' : 'Informe um e-mail v&#225;lido.'" />}</label><label
+        class="auth-field"><span>Senha</span><span class="input-shell"
+          [style.border-color]="submitted() && !auth.loginPassword.trim() ? '#ef4444' : null"><svg lucideLockKeyhole
+            class="ui-icon"></svg><input name="password" type="password" placeholder="Sua senha"
+            autocomplete="current-password" [(ngModel)]="auth.loginPassword" required /></span>@if(submitted() &&
+        !auth.loginPassword.trim()){<app-field-error message="Informe sua senha." />}</label><button
+        class="forgot-password" type="button" (click)="auth.show('recovery')">Esqueci minha senha</button><button
+        class="button-primary auth-submit" type="submit" [disabled]="auth.busy()"><svg lucideLogIn
+          class="ui-icon"></svg>Entrar</button></form><button class="button-outline auth-alternate" type="button"
+      (click)="auth.show('signup')">Criar conta</button>
+
+    @if (pwa.canInstall()) {
+    <button class="button-primary auth-submit" type="button" (click)="pwa.install()">
+      <span>INSTALAR APLICATIVO</span>
+    </button>
+    }
+
+    <footer class="auth-footer">&#169; 2026 Meu Plant&#227;o &#8212; Desenvolvido por Edson Meira.</footer>
+  </div>
+</section>

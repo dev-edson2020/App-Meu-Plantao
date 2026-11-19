@@ -4,7 +4,7 @@ import { AuthService } from '../../../core/auth.service';
 import { FormValidationService } from '../../../core/form-validation.service';
 import { FieldErrorComponent } from '../../../shared/field-error/field-error';
 import { LucideLockKeyhole, LucideLogIn, LucideMail } from '@lucide/angular';
-
+import { PwaInstallService } from '../../../core/pwa-install.service';
 @Component({
   selector: 'app-login',
   standalone: true,
@@ -14,6 +14,7 @@ import { LucideLockKeyhole, LucideLogIn, LucideMail } from '@lucide/angular';
 })
 export class LoginComponent {
   readonly auth = inject(AuthService);
+  readonly pwa = inject(PwaInstallService);
   private readonly validation = inject(FormValidationService);
   readonly submitted = signal(false);
 
