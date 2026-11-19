@@ -25,10 +25,9 @@
         {{ vm.clockNow() | date:'dd/MM/yyyy':'America/Sao_Paulo' }}
       </small>
     </div>
-
     @if (vm.capturedAt()) {
     <div class="captured-time">
-      <svg lucideCheck class="ui-icon"></svg>
+    
       {{ vm.recordKind() }} selecionada às
       {{ vm.capturedAt() | date:'HH:mm:ss':'America/Sao_Paulo' }}
     </div>
