@@ -2,25 +2,15 @@
   <div class="header-photo" aria-hidden="true"></div>
 
   @if (home) {
-  <span class="header-spacer" aria-hidden="true"></span>
+    <span class="header-spacer" aria-hidden="true"></span>
 
-  <div class="screen-heading brand-heading">
-    <h1>Meu Plantão</h1>
-    <span>RADIOLOGIA</span>
-  </div>
+    <div class="screen-heading brand-heading">
+      <h1>Meu Plantão</h1>
+      <span>RADIOLOGIA</span>
+    </div>
   } @else {
-  <button class="back-button" type="button" aria-label="Voltar" (click)="backClick.emit()">
-    <svg lucideArrowLeft class="ui-icon"></svg>
-  </button>
-
-  <div class="screen-heading brand-heading page-heading">
-    <h1>{{ title }}</h1>
-  </div>
+    <div class="screen-heading brand-heading page-heading">
+      <h1>{{ title }}</h1>
+    </div>
   }
-
-  <button class="exit-action" type="button" aria-label="Sair do aplicativo" title="Sair do aplicativo"
-    (click)="exitClick.emit()">
-    <svg lucideLogOut class="ui-icon"></svg>
-    <span>Sair</span>
-  </button>
 </header>

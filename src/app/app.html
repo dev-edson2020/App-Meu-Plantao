@@ -1,54 +1,94 @@
 <main class="app-shell" [class.auth-shell]="vm.screen() === 'welcome'">
   @if (vm.screen() === 'welcome') {
   @switch (auth.view()) {
-  @case ('login') { @defer { <app-login /> } @placeholder { <div class="screen-loading" role="status">Carregando&#8230;
-  </div> } }
-  @case ('signup') { @defer { <app-signup /> } @placeholder { <div class="screen-loading" role="status">
-    Carregando&#8230;</div> } }
-  @default { @defer { <app-password-recovery /> } @placeholder { <div class="screen-loading" role="status">
-    Carregando&#8230;</div> } }
+  @case ('login') {
+  @defer {
+  <app-login />
+  } @placeholder {
+  <div class="screen-loading" role="status">Carregando…</div>
+  }
+  }
+  @case ('signup') {
+  @defer {
+  <app-signup />
+  } @placeholder {
+  <div class="screen-loading" role="status">Carregando…</div>
+  }
+  }
+  @default {
+  @defer {
+  <app-password-recovery />
+  } @placeholder {
+  <div class="screen-loading" role="status">Carregando…</div>
+  }
+  }
   }
   } @else {
   <app-header [home]="vm.screen() === 'home'"
-    [title]="vm.screen() === 'register' ? 'Registrar Ponto' : vm.screen() === 'records' ? 'Meus Registros' : vm.screen() === 'reports' ? 'Relat&#243;rios' : 'Meu Cadastro'"
-    (backClick)="vm.goBack()" (exitClick)="vm.requestExit()" />
+    [title]="vm.screen() === 'register' ? 'Registrar Ponto' : vm.screen() === 'records' ? 'Meus Registros' : vm.screen() === 'reports' ? 'Relatórios' : 'Meu Cadastro'" />
+
   @switch (vm.screen()) {
-  @case ('home') { @defer { <app-home /> } @placeholder { <div class="screen-loading" role="status">Carregando&#8230;
-  </div> } }
-  @case ('register') { @defer { <app-register /> } @placeholder { <div class="screen-loading" role="status">
-    Carregando&#8230;</div> } }
-  @case ('records') { @defer { <app-records /> } @placeholder { <div class="screen-loading" role="status">
-    Carregando&#8230;</div> } }
-  @case ('reports') { @defer { <app-reports /> } @placeholder { <div class="screen-loading" role="status">
-    Carregando&#8230;</div> } }
-  @case ('profile') { @defer { <app-profile /> } @placeholder { <div class="screen-loading" role="status">
-    Carregando&#8230;</div> } }
+  @case ('home') {
+  @defer {
+  <app-home />
+  } @placeholder {
+  <div class="screen-loading" role="status">Carregando…</div>
   }
+  }
+  @case ('register') {
+  @defer {
+  <app-register />
+  } @placeholder {
+  <div class="screen-loading" role="status">Carregando…</div>
+  }
+  }
+  @case ('records') {
+  @defer {
+  <app-records />
+  } @placeholder {
+  <div class="screen-loading" role="status">Carregando…</div>
+  }
+  }
+  @case ('reports') {
+  @defer {
+  <app-reports />
+  } @placeholder {
+  <div class="screen-loading" role="status">Carregando…</div>
+  }
+  }
+  @case ('profile') {
+  @defer {
+  <app-profile />
+  } @placeholder {
+  <div class="screen-loading" role="status">Carregando…</div>
+  }
+  }
+  }
+
   @if (vm.screen() !== 'register') {
-  <nav class="bottom-nav" aria-label="Navega&#231;&#227;o inferior">
-    <button [class.active]="vm.screen() === 'home'" (click)="vm.go('home')"><svg lucideHouse
-        class="ui-icon"></svg><span>In&#237;cio</span></button>
-    <button [class.active]="vm.screen() === 'records'" (click)="vm.go('records')"><svg lucideClock3
-        class="ui-icon"></svg><span>Registros</span></button>
-    <button [class.active]="vm.screen() === 'reports'" (click)="vm.go('reports')"><svg lucideChartNoAxesColumnIncreasing
-        class="ui-icon"></svg><span>Relat&#243;rios</span></button>
-    <button [class.active]="vm.screen() === 'profile'" (click)="vm.go('profile')"><svg lucideUserRound
-        class="ui-icon"></svg><span>Perfil</span></button>
+  <nav class="bottom-nav" aria-label="Navegação inferior">
+    <button [class.active]="vm.screen() === 'home'" (click)="vm.go('home')">
+      <svg lucideHouse class="ui-icon"></svg>
+      <span>Início</span>
+    </button>
+
+    <button [class.active]="vm.screen() === 'records'" (click)="vm.go('records')">
+      <svg lucideClock3 class="ui-icon"></svg>
+      <span>Registros</span>
+    </button>
+
+    <button [class.active]="vm.screen() === 'reports'" (click)="vm.go('reports')">
+      <svg lucideChartNoAxesColumnIncreasing class="ui-icon"></svg>
+      <span>Relatórios</span>
+    </button>
+
+    <button [class.active]="vm.screen() === 'profile'" (click)="vm.go('profile')">
+      <svg lucideUserRound class="ui-icon"></svg>
+      <span>Perfil</span>
+    </button>
   </nav>
   }
-  @if (vm.showExitConfirmation()) {
-  <div class="exit-confirmation">
-    <section class="exit-dialog" role="alertdialog" aria-modal="true" aria-labelledby="exit-dialog-title"
-      aria-describedby="exit-dialog-message">
-      <span class="exit-dialog-icon"><svg lucideLogOut class="ui-icon"></svg></span>
-      <h2 id="exit-dialog-title">Encerrar sess&#227;o?</h2>
-      <p id="exit-dialog-message">Seus registros e fotos ser&#227;o mantidos.</p>
-      <div class="exit-dialog-actions"><button class="button-outline" type="button"
-          (click)="vm.cancelExit()">Cancelar</button><button class="button-primary" type="button"
-          (click)="vm.confirmExit()">Sair</button></div>
-    </section>
-  </div>
   }
-  }
+
   <app-toast />
 </main>
