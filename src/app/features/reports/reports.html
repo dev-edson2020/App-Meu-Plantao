@@ -118,5 +118,5 @@
     <footer class="print-footer">Meu Plant&#227;o &ndash; Radiologia &middot; {{ vm.monthLabel() }} &middot; Emitido em {{ generatedAt }}</footer>
   </section>
 
-  @if (!vm.visibleRecords().length) { <p class="report-empty-note">A impress&#227;o fica dispon&#237;vel quando houver registros no m&#234;s selecionado.</p> }
+  @if (!vm.visibleRecords().length) { <p class="report-empty-note"><svg lucideInfo class="ui-icon"></svg><span>Relat&#243;rios indispon&#237;veis. Registre pelo menos um plant&#227;o neste m&#234;s para liberar a gera&#231;&#227;o dos relat&#243;rios.</span></p> }
 </section>
