@@ -48,9 +48,10 @@
     });
     window.addEventListener('appinstalled', () => {
       installPrompt = null;
-      button.textContent = 'APLICATIVO INSTALADO';
-      button.disabled = true;
-      status.textContent = 'Instalação concluída! Procure o ícone Meu Plantão na tela inicial.';
+      status.textContent = 'Instalação concluída! Abrindo o Meu Plantão...';
+      window.setTimeout(() => {
+        window.location.replace('/login');
+      }, 800);
     });
     button.addEventListener('click', async () => {
       if (isStandalone) return;
