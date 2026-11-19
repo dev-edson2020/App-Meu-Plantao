@@ -4,7 +4,7 @@ import type { TimeRecord } from '../../core/app-state.service';
 import { PlantaoService } from '../../core/plantao.service';
 import { AuthService } from '../../core/auth.service';
 import type { OfflineOperation, SyncStatus } from '../../core/offline-sync.service';
-import { LucideCalendarDays, LucideChevronLeft, LucideChevronRight, LucideFileText, LucideClock3, LucidePrinter } from '@lucide/angular';
+import { LucideCalendarDays, LucideChevronLeft, LucideChevronRight, LucideFileText, LucideClock3, LucidePrinter, LucideInfo } from '@lucide/angular';
 
 interface ReportInterval {
   id: string;
@@ -19,7 +19,7 @@ interface ReportSyncState {
   wasOffline: boolean;
 }
 
-@Component({ selector: 'app-reports', standalone: true, imports: [ LucideCalendarDays, LucideChevronLeft, LucideChevronRight, LucideFileText, LucideClock3, LucidePrinter ], templateUrl: './reports.html', styleUrl: './reports.scss' })
+@Component({ selector: 'app-reports', standalone: true, imports: [ LucideCalendarDays, LucideChevronLeft, LucideChevronRight, LucideFileText, LucideClock3, LucidePrinter, LucideInfo ], templateUrl: './reports.html', styleUrl: './reports.scss' })
 export class ReportsComponent implements OnDestroy {
   readonly vm = inject(AppState);
   private readonly plantaoService = inject(PlantaoService);
